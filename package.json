@@ -1,0 +1,23 @@
+{
+  "name": "vantris-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Vantris — a modern bundler for JavaScript/TypeScript",
+  "type": "module",
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "packageManager": "pnpm@11.8.0",
+  "scripts": {
+    "build": "pnpm --filter vantris build",
+    "dev": "pnpm --filter vantris dev",
+    "typecheck": "pnpm -r typecheck",
+    "play:dev": "pnpm --filter playground dev",
+    "play:build": "pnpm --filter playground build",
+    "play:preview": "pnpm --filter playground preview"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}

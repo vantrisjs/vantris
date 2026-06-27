@@ -1,0 +1,16 @@
+{
+  "name": "playground",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local test project for developing Vantris",
+  "scripts": {
+    "dev": "vantris dev",
+    "build": "vantris build",
+    "preview": "vantris preview",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "vantris": "workspace:*"
+  }
+}
