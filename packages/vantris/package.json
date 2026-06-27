@@ -1,10 +1,15 @@
 {
   "name": "vantris",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A modern bundler for JavaScript/TypeScript",
   "type": "module",
   "license": "MIT",
-  "keywords": ["bundler", "build-tool", "dev-server", "typescript"],
+  "keywords": [
+    "bundler",
+    "build-tool",
+    "dev-server",
+    "typescript"
+  ],
   "bin": {
     "vantris": "dist/cli/index.js"
   },
@@ -17,7 +22,9 @@
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "engines": {
     "node": ">=20.11.0"
   },
@@ -29,6 +36,13 @@
     "prepublishOnly": "pnpm run build"
   },
   "devDependencies": {
+    "@types/ws": "^8.18.1",
     "tsup": "^8.3.5"
+  },
+  "dependencies": {
+    "chokidar": "^5.0.0",
+    "esbuild": "^0.28.1",
+    "h3": "2.0.1-rc.22",
+    "ws": "^8.21.0"
   }
 }

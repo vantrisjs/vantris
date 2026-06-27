@@ -1,7 +1,10 @@
 import type { Config } from "../types/config.js";
-import type { ResolvedConfig } from "../types/config-resolved.js";
+import type {
+  ResolvedConfig,
+  ResolvedDevConfig,
+} from "../types/config-resolved.js";
 import type { ResolvedPaths } from "../types/paths.js";
-import { DEFAULTS } from "../shared/constants.js";
+import { DEFAULTS, DEV_DEFAULTS } from "../shared/constants.js";
 import { resolveFrom } from "../utils/paths.js";
 
 /**
@@ -27,5 +30,10 @@ export function resolveConfig(
     outDir: resolveFrom(root, raw.outDir ?? DEFAULTS.outDir),
   };
 
-  return { raw, paths, configFile };
+  const dev: ResolvedDevConfig = {
+    port: raw.dev?.port ?? DEV_DEFAULTS.port,
+    host: raw.dev?.host ?? DEV_DEFAULTS.host,
+  };
+
+  return { raw, paths, dev, configFile };
 }

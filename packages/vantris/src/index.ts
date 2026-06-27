@@ -8,11 +8,21 @@
 // Configuration
 export { defineConfig, loadConfig, resolveConfig } from "./config/index.js";
 
-// HTML entry detection
-export { detectHtmlEntry, parseHtml } from "./html/index.js";
+// HTML pipeline
+export {
+  detectHtmlEntry,
+  parseHtml,
+  injectDevClient,
+  DEV_CLIENT_SCRIPT,
+} from "./html/index.js";
+
+// Dev server
+export { startDevServer } from "./server/index.js";
+export type { DevServerOptions, DevServerHandle } from "./server/index.js";
 
 // Context & services
-export { createContext, createLogger } from "./shared/index.js";
+export { createContext, createLogger, createWatcher } from "./shared/index.js";
+export type { Watcher, WatcherOptions, WatchEvent } from "./shared/index.js";
 export {
   VantrisError,
   ConfigError,
@@ -31,10 +41,13 @@ export type {
   Config,
   ConfigFn,
   ConfigInput,
+  DevConfig,
   ResolvedConfig,
+  ResolvedDevConfig,
   ResolvedPaths,
   Logger,
   HtmlEntry,
+  HtmlModuleScript,
   Context,
   Command,
 } from "./types/index.js";

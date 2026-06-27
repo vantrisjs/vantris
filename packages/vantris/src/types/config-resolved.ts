@@ -1,6 +1,12 @@
 import type { Config } from "./config.js";
 import type { ResolvedPaths } from "./paths.js";
 
+/** Dev-server options after defaults have been applied (no optionals). */
+export interface ResolvedDevConfig {
+  readonly port: number;
+  readonly host: string;
+}
+
 /**
  * A {@link Config} after defaults have been applied and paths resolved.
  *
@@ -13,6 +19,8 @@ export interface ResolvedConfig {
   readonly raw: Config;
   /** Absolute paths derived from the configuration. */
   readonly paths: ResolvedPaths;
+  /** Resolved dev-server options. */
+  readonly dev: ResolvedDevConfig;
   /** Absolute path of the config file that was loaded, if any. */
   readonly configFile: string | null;
 }

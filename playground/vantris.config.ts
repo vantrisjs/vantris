@@ -4,4 +4,8 @@ export default defineConfig({
   rootDir: "./src",
   publicDir: "./public",
   outDir: "./dist",
+  dev: {
+    port: 3000,
+    host: "localhost",
+  },
 });

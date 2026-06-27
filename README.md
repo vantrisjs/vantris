@@ -39,11 +39,11 @@ pnpm play:preview
 | `cli/`      | Argument parsing + routing only — no command logic.     |
 | `commands/` | One module per command (`dev`, `build`, `preview`).     |
 | `config/`   | `defineConfig`, config loading, defaults, resolution.   |
-| `html/`     | Isolated HTML entry detection & parsing.                |
-| `server/`   | Dev server seam (planned: H3 + HMR).                    |
+| `html/`     | HTML entry detection, module-script analysis, dev-client injection. |
+| `server/`   | H3 dev server: routing, static serving, esbuild transpile, WebSocket reload. |
 | `build/`    | Build seam (planned: Rolldown + esbuild).               |
 | `preview/`  | Preview seam (planned: static server over `outDir`).    |
-| `shared/`   | Context factory, logger, errors, constants.             |
+| `shared/`   | Context factory, logger, file watcher, errors, constants. |
 | `types/`    | Public & internal type contracts.                       |
 | `utils/`    | Small filesystem & path helpers.                        |
 
@@ -64,10 +64,30 @@ Create `vantris.config.ts` (or `.js` / `.mjs`) at the project root:
 import { defineConfig } from "vantris";
 
 export default defineConfig({
-  rootDir: "./src",     // default
+  rootDir: "./src",      // default
   publicDir: "./public", // default
   outDir: "./dist",      // default
+  dev: {
+    port: 3000,          // default
+    host: "localhost",   // default
+  },
 });
 ```
 
 All fields are optional; the defaults above apply when omitted.
+
+## Dev server (v0.2.0)
+
+```bash
+pnpm play:dev          # runs `vantris dev` in the playground
+```
+
+`vantris dev` starts an H3 server that serves `index.html`, transpiles
+TypeScript on the fly with esbuild (transform only — no bundling), and live-
+reloads the browser on file changes via an injected WebSocket client.
+
+Serving follows a Vite-style allowlist: source modules come from `rootDir`
+(`/src/*`), `public/` contents are served at `/`, and everything else under the
+project root (`node_modules`, `package.json`, lockfiles, config files) is **not**
+reachable. HMR, plugins, and the production build are intentionally **not** part
+of this version.

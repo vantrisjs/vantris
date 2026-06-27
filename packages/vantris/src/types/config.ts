@@ -6,6 +6,29 @@
  * single extension point through which future versions will grow (plugins,
  * build options, HMR, server tuning, …) without breaking existing configs.
  */
+/**
+ * Development server options.
+ *
+ * Extension point for the dev server. v0.2.0 exposes only `port` and `host`;
+ * future versions will add HMR, proxy, HTTPS, and middleware hooks here
+ * without breaking existing configs.
+ */
+export interface DevConfig {
+  /**
+   * Port the dev server listens on.
+   *
+   * @default 3000
+   */
+  port?: number;
+
+  /**
+   * Host the dev server binds to.
+   *
+   * @default "localhost"
+   */
+  host?: string;
+}
+
 export interface Config {
   /**
    * Project root. Resolved relative to the current working directory.
@@ -37,12 +60,16 @@ export interface Config {
    */
   outDir?: string;
 
+  /**
+   * Development server options. See {@link DevConfig}.
+   */
+  dev?: DevConfig;
+
   // ───────────────────────────────────────────────────────────────────────
   // Reserved for future versions. Declared here as a contract so consumers
   // and tooling can already anticipate the shape, without any behaviour yet.
   //
   //   plugins?: Plugin[];
-  //   server?: ServerOptions;   // dev server (H3)
   //   build?: BuildOptions;     // build system (Rolldown)
   //   resolve?: ResolveOptions; // transforms / aliasing (esbuild)
   // ───────────────────────────────────────────────────────────────────────
