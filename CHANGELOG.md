@@ -7,7 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_Reserved for future versions. Planned: `preview`, HMR, and a plugin system._
+_Reserved for future versions. Planned: env variables (`import.meta.env`), HMR,
+and a plugin system._
+
+## [0.4.0] - 2026-06-28
+
+Preview server and developer-experience polish, completing the dev cycle:
+`dev`, `build`, and `preview` all work.
+
+### Added
+
+- **Preview command** — `vantris preview` serves the finished build from
+  `outDir` over an H3 server, with no compilation. Correct content types, SPA
+  fallback to `index.html`, and a 404 for missing assets. Honours a custom
+  `base` (sub-path deploys): base-prefixed request URLs map back to `outDir`.
+- **Preview config** — new `preview` option (`PreviewConfig`: `port` (4173),
+  `host` (`localhost`), `open` (`false`)).
+- **Auto-open** — `preview.open: true` launches the default browser
+  (cross-platform: macOS/Windows/Linux).
+- **Network URL** — the preview prints the local URL, the served directory, and
+  the startup time. The LAN URL is shown **only** when bound to a wildcard host
+  (`0.0.0.0`/`::`); a loopback host shows no (unreachable) network URL.
+- **Errors** — `PreviewError` (missing build output) and `ServerError` (port in
+  use), both `VantrisError` subclasses with explicit messages.
+- **Tests** — preview server, SPA fallback, browser-open (mocked), errors, and
+  preview config resolution (62 tests total).
+
+### Changed
+
+- The dev and preview servers now share a single HTTP bootstrap
+  (`server/node.ts`: app creation, `listen` with actual-port reporting, close);
+  `waitForShutdown` is shared by the `dev` and `preview` commands. No public API
+  changes.
+- Documentation overhauled: Getting Started, CLI, Configuration, and per-command
+  (Dev/Build/Preview) sections with examples.
 
 ## [0.3.0] - 2026-06-28
 
@@ -144,7 +177,8 @@ transforms, HMR, plugins) are scaffolded as seams but not yet implemented.
 - **Build** — bundled with [tsup](https://tsup.egoist.dev/) to ESM with type
   declarations; type-checking via `tsc --noEmit`.
 
-[Unreleased]: https://github.com/vantrisjs/vantris/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/vantrisjs/vantris/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/vantrisjs/vantris/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/vantrisjs/vantris/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/vantrisjs/vantris/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/vantrisjs/vantris/releases/tag/v0.1.0

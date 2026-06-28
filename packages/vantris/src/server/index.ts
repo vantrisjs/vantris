@@ -1,12 +1,12 @@
-import { createServer, type Server as HttpServer } from "node:http";
 import { readFile } from "node:fs/promises";
-import { H3, getRequestURL, toNodeHandler } from "h3";
+import { getRequestURL } from "h3";
 import type { H3Event } from "h3";
 import type { Context } from "../types/context.js";
 import type { HtmlEntry } from "../types/html.js";
 import { injectDevClient } from "../html/index.js";
 import { createReloadSocket, type ReloadSocket } from "./websocket.js";
 import { createStaticLoader } from "./static.js";
+import { closeServer, createNodeServer, listen, localUrl } from "./node.js";
 
 /** Options for {@link startDevServer}. */
 export interface DevServerOptions {
@@ -53,7 +53,6 @@ export async function startDevServer(
   });
   const entryFile = entry?.file ?? null;
 
-  const app = new H3();
   const handler = async (event: H3Event) => {
     const { pathname } = getRequestURL(event);
 
@@ -85,49 +84,20 @@ export async function startDevServer(
     });
   };
 
-  app.all("/", handler);
-  app.all("/**", handler);
-
-  const server: HttpServer = createServer(toNodeHandler(app));
+  const server = createNodeServer(handler);
   const reload: ReloadSocket = createReloadSocket({ server, logger: ctx.logger });
 
   // The actual bound port — important when `port` is 0 (OS-assigned).
   const port = await listen(server, dev.port, dev.host);
 
-  const url = `http://${dev.host}:${port}/`;
-
   return {
-    url,
+    url: localUrl(dev.host, port),
     host: dev.host,
     port,
     broadcastReload: () => reload.broadcastReload(),
     async close() {
       await reload.close();
-      await new Promise<void>((resolveClose, reject) => {
-        server.close((err) => (err ? reject(err) : resolveClose()));
-      });
+      await closeServer(server);
     },
   };
-}
-
-/** Promisified `server.listen`; resolves with the actual bound port. */
-function listen(server: HttpServer, port: number, host: string): Promise<number> {
-  return new Promise((resolveListen, reject) => {
-    const onError = (err: NodeJS.ErrnoException) => {
-      server.removeListener("error", onError);
-      reject(
-        err.code === "EADDRINUSE"
-          ? new Error(`Port ${port} is already in use.`)
-          : err,
-      );
-    };
-    server.once("error", onError);
-    server.listen(port, host, () => {
-      server.removeListener("error", onError);
-      const address = server.address();
-      resolveListen(
-        typeof address === "object" && address ? address.port : port,
-      );
-    });
-  });
 }

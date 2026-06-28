@@ -7,6 +7,13 @@ export interface ResolvedDevConfig {
   readonly host: string;
 }
 
+/** Preview-server options after defaults have been applied (no optionals). */
+export interface ResolvedPreviewConfig {
+  readonly port: number;
+  readonly host: string;
+  readonly open: boolean;
+}
+
 /** Build options after defaults have been applied (no optionals). */
 export interface ResolvedBuildConfig {
   readonly minify: boolean;
@@ -35,6 +42,8 @@ export interface ResolvedConfig {
   readonly dev: ResolvedDevConfig;
   /** Resolved build options. */
   readonly build: ResolvedBuildConfig;
+  /** Resolved preview-server options. */
+  readonly preview: ResolvedPreviewConfig;
   /** Absolute path of the config file that was loaded, if any. */
   readonly configFile: string | null;
 }

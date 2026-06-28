@@ -26,6 +26,16 @@ export class BuildError extends VantrisError {
   override readonly name = "BuildError";
 }
 
+/** Thrown when an HTTP server cannot start (e.g. the port is in use). */
+export class ServerError extends VantrisError {
+  override readonly name = "ServerError";
+}
+
+/** Thrown when previewing fails (e.g. the build output is missing). */
+export class PreviewError extends VantrisError {
+  override readonly name = "PreviewError";
+}
+
 /** Thrown for functionality declared but not yet implemented in this version. */
 export class NotImplementedError extends VantrisError {
   override readonly name = "NotImplementedError";

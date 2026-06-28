@@ -4,6 +4,7 @@ export type {
   ConfigInput,
   DevConfig,
   BuildConfig,
+  PreviewConfig,
   ChunkInfo,
   AssetInfo,
   ChunkFileNames,
@@ -13,6 +14,7 @@ export type {
   ResolvedConfig,
   ResolvedDevConfig,
   ResolvedBuildConfig,
+  ResolvedPreviewConfig,
 } from "./config-resolved.js";
 export type { ResolvedPaths } from "./paths.js";
 export type { Logger } from "./logger.js";

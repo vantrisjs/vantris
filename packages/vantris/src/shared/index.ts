@@ -5,6 +5,7 @@ export {
   DEFAULTS,
   DEV_DEFAULTS,
   BUILD_DEFAULTS,
+  PREVIEW_DEFAULTS,
   RELOAD_MESSAGE,
   CONFIG_FILENAMES,
 } from "./constants.js";
@@ -19,6 +20,8 @@ export {
   ConfigError,
   HtmlEntryError,
   BuildError,
+  ServerError,
+  PreviewError,
   NotImplementedError,
   isVantrisError,
 } from "./errors.js";

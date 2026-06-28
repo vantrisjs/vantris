@@ -12,4 +12,9 @@ export default defineConfig({
     minify: true,
     sourcemap: false,
   },
+  preview: {
+    port: 4173,
+    host: "localhost",
+    open: false,
+  },
 });

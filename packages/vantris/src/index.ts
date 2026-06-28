@@ -24,6 +24,13 @@ export type { DevServerOptions, DevServerHandle } from "./server/index.js";
 export { runBuild } from "./build/index.js";
 export type { BuildOptions, BuildResult } from "./build/index.js";
 
+// Preview server
+export { startPreviewServer } from "./preview/index.js";
+export type {
+  PreviewServerOptions,
+  PreviewServerHandle,
+} from "./preview/index.js";
+
 // Context & services
 export { createContext, createLogger, createWatcher } from "./shared/index.js";
 export type { Watcher, WatcherOptions, WatchEvent } from "./shared/index.js";
@@ -32,6 +39,8 @@ export {
   ConfigError,
   HtmlEntryError,
   BuildError,
+  ServerError,
+  PreviewError,
   NotImplementedError,
   isVantrisError,
 } from "./shared/errors.js";
@@ -48,6 +57,7 @@ export type {
   ConfigInput,
   DevConfig,
   BuildConfig,
+  PreviewConfig,
   ChunkInfo,
   AssetInfo,
   ChunkFileNames,
@@ -55,6 +65,7 @@ export type {
   ResolvedConfig,
   ResolvedDevConfig,
   ResolvedBuildConfig,
+  ResolvedPreviewConfig,
   ResolvedPaths,
   Logger,
   HtmlEntry,

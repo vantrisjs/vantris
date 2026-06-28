@@ -3,9 +3,15 @@ import type {
   ResolvedBuildConfig,
   ResolvedConfig,
   ResolvedDevConfig,
+  ResolvedPreviewConfig,
 } from "../types/config-resolved.js";
 import type { ResolvedPaths } from "../types/paths.js";
-import { BUILD_DEFAULTS, DEFAULTS, DEV_DEFAULTS } from "../shared/constants.js";
+import {
+  BUILD_DEFAULTS,
+  DEFAULTS,
+  DEV_DEFAULTS,
+  PREVIEW_DEFAULTS,
+} from "../shared/constants.js";
 import { resolveFrom } from "../utils/paths.js";
 
 /**
@@ -50,7 +56,13 @@ export function resolveConfig(
       raw.build?.assetFileNames ?? `${assetsDir}/[name]-[hash][extname]`,
   };
 
-  return { raw, paths, base, dev, build, configFile };
+  const preview: ResolvedPreviewConfig = {
+    port: raw.preview?.port ?? PREVIEW_DEFAULTS.port,
+    host: raw.preview?.host ?? PREVIEW_DEFAULTS.host,
+    open: raw.preview?.open ?? PREVIEW_DEFAULTS.open,
+  };
+
+  return { raw, paths, base, dev, build, preview, configFile };
 }
 
 /** Ensures the base path starts and ends with `/` (leaving absolute URLs intact). */

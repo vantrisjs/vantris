@@ -2,7 +2,7 @@
 export const APP_NAME = "vantris";
 
 /** Current Vantris version. Kept in sync with package.json at release time. */
-export const VERSION = "0.3.0";
+export const VERSION = "0.4.0";
 
 /** The HTML entry filename Vantris looks for at the project root. */
 export const HTML_ENTRY_FILENAME = "index.html";
@@ -26,6 +26,13 @@ export const BUILD_DEFAULTS = {
   minify: true,
   sourcemap: false,
   assetsDir: "assets",
+} as const;
+
+/** Default preview-server options. */
+export const PREVIEW_DEFAULTS = {
+  port: 4173,
+  host: "localhost",
+  open: false,
 } as const;
 
 /**

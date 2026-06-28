@@ -40,6 +40,19 @@ describe("resolveConfig", () => {
     expect(build.minify).toBe(false);
   });
 
+  it("defaults and overrides preview options", () => {
+    expect(resolveConfig({}, cwd).preview).toEqual({
+      port: 4173,
+      host: "localhost",
+      open: false,
+    });
+    expect(resolveConfig({ preview: { port: 5000, open: true } }, cwd).preview).toEqual({
+      port: 5000,
+      host: "localhost",
+      open: true,
+    });
+  });
+
   it("derives fileNames from assetsDir, but explicit values win", () => {
     expect(resolveConfig({ build: { assetsDir: "static" } }, cwd).build.entryFileNames).toBe(
       "static/[name]-[hash].js",

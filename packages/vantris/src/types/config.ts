@@ -135,6 +135,36 @@ export interface BuildConfig {
   // ───────────────────────────────────────────────────────────────────────
 }
 
+/**
+ * Preview-server options.
+ *
+ * The preview server (`vantris preview`) serves a finished production build
+ * from `outDir`, mirroring production as closely as possible. It performs no
+ * compilation.
+ */
+export interface PreviewConfig {
+  /**
+   * Port the preview server listens on.
+   *
+   * @default 4173
+   */
+  port?: number;
+
+  /**
+   * Host the preview server binds to.
+   *
+   * @default "localhost"
+   */
+  host?: string;
+
+  /**
+   * Open the app in the default browser once the server is ready.
+   *
+   * @default false
+   */
+  open?: boolean;
+}
+
 export interface Config {
   /**
    * Project root. Resolved relative to the current working directory.
@@ -185,6 +215,11 @@ export interface Config {
    * Production build options. See {@link BuildConfig}.
    */
   build?: BuildConfig;
+
+  /**
+   * Preview server options. See {@link PreviewConfig}.
+   */
+  preview?: PreviewConfig;
 
   // ───────────────────────────────────────────────────────────────────────
   // Reserved for future versions. Declared here as a contract so consumers

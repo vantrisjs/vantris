@@ -47,3 +47,16 @@ export async function prepareDirectories(
     ctx.logger.debug(`prepared directory: ${dir}`);
   }
 }
+
+/** Resolves when the process receives an interrupt/terminate signal (Ctrl-C). */
+export function waitForShutdown(): Promise<void> {
+  return new Promise((resolve) => {
+    const onSignal = () => {
+      process.removeListener("SIGINT", onSignal);
+      process.removeListener("SIGTERM", onSignal);
+      resolve();
+    };
+    process.once("SIGINT", onSignal);
+    process.once("SIGTERM", onSignal);
+  });
+}

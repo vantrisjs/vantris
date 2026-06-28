@@ -2,7 +2,11 @@ import { relative } from "node:path";
 import type { Command } from "../types/command.js";
 import { startDevServer } from "../server/index.js";
 import { createWatcher } from "../shared/watcher.js";
-import { inspectProject, prepareDirectories } from "./support.js";
+import {
+  inspectProject,
+  prepareDirectories,
+  waitForShutdown,
+} from "./support.js";
 
 /** Coalesce a burst of filesystem events into a single reload. */
 const RELOAD_DEBOUNCE_MS = 50;
@@ -45,16 +49,3 @@ export const dev: Command = {
     await server.close();
   },
 };
-
-/** Resolves when the process receives an interrupt/terminate signal. */
-function waitForShutdown(): Promise<void> {
-  return new Promise((resolve) => {
-    const onSignal = () => {
-      process.removeListener("SIGINT", onSignal);
-      process.removeListener("SIGTERM", onSignal);
-      resolve();
-    };
-    process.once("SIGINT", onSignal);
-    process.once("SIGTERM", onSignal);
-  });
-}
