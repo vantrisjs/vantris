@@ -1,9 +1,11 @@
 import type { Config } from "../types/config.js";
 import type {
+  AliasEntry,
   ResolvedBuildConfig,
   ResolvedConfig,
   ResolvedDevConfig,
   ResolvedPreviewConfig,
+  ResolvedResolveConfig,
 } from "../types/config-resolved.js";
 import type { ResolvedPaths } from "../types/paths.js";
 import {
@@ -11,6 +13,7 @@ import {
   DEFAULTS,
   DEV_DEFAULTS,
   PREVIEW_DEFAULTS,
+  RESOLVE_EXTENSIONS,
 } from "../shared/constants.js";
 import { resolveFrom } from "../utils/paths.js";
 
@@ -62,7 +65,19 @@ export function resolveConfig(
     open: raw.preview?.open ?? PREVIEW_DEFAULTS.open,
   };
 
-  return { raw, paths, base, dev, build, preview, configFile };
+  const alias: AliasEntry[] = Object.entries(raw.resolve?.alias ?? {})
+    .map(([find, replacement]) => ({
+      find,
+      replacement: resolveFrom(root, replacement),
+    }))
+    // Longest find first, so `@foo` wins over `@`.
+    .sort((a, b) => b.find.length - a.find.length);
+  const resolve: ResolvedResolveConfig = {
+    alias,
+    extensions: RESOLVE_EXTENSIONS,
+  };
+
+  return { raw, paths, base, dev, build, preview, resolve, configFile };
 }
 
 /** Ensures the base path starts and ends with `/` (leaving absolute URLs intact). */

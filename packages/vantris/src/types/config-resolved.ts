@@ -14,6 +14,20 @@ export interface ResolvedPreviewConfig {
   readonly open: boolean;
 }
 
+/** A normalised alias: replace `find` (prefix) with the absolute `replacement`. */
+export interface AliasEntry {
+  readonly find: string;
+  readonly replacement: string;
+}
+
+/** Resolution options after defaults/normalisation. */
+export interface ResolvedResolveConfig {
+  /** Alias entries, sorted longest-`find`-first. Replacements are absolute. */
+  readonly alias: readonly AliasEntry[];
+  /** Extensions tried when resolving an extensionless specifier. */
+  readonly extensions: readonly string[];
+}
+
 /** Build options after defaults have been applied (no optionals). */
 export interface ResolvedBuildConfig {
   readonly minify: boolean;
@@ -44,6 +58,8 @@ export interface ResolvedConfig {
   readonly build: ResolvedBuildConfig;
   /** Resolved preview-server options. */
   readonly preview: ResolvedPreviewConfig;
+  /** Resolved module-resolution options. */
+  readonly resolve: ResolvedResolveConfig;
   /** Absolute path of the config file that was loaded, if any. */
   readonly configFile: string | null;
 }

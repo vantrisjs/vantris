@@ -6,7 +6,20 @@
  */
 
 // Configuration
-export { defineConfig, loadConfig, resolveConfig } from "./config/index.js";
+export {
+  defineConfig,
+  loadConfig,
+  resolveConfig,
+  validateConfig,
+} from "./config/index.js";
+
+// Environment variables
+export { loadEnv, parseEnv, clientEnv, envDefine, ENV_PREFIX } from "./env/index.js";
+export type { ClientEnv } from "./env/index.js";
+
+// Module resolver
+export { createResolver } from "./resolver/index.js";
+export type { Resolver } from "./resolver/index.js";
 
 // HTML pipeline
 export {
@@ -58,6 +71,7 @@ export type {
   DevConfig,
   BuildConfig,
   PreviewConfig,
+  ResolveConfig,
   ChunkInfo,
   AssetInfo,
   ChunkFileNames,
@@ -66,6 +80,8 @@ export type {
   ResolvedDevConfig,
   ResolvedBuildConfig,
   ResolvedPreviewConfig,
+  ResolvedResolveConfig,
+  AliasEntry,
   ResolvedPaths,
   Logger,
   HtmlEntry,

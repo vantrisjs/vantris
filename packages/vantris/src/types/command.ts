@@ -11,6 +11,11 @@ export interface Command {
   /** One-line description shown in help output. */
   readonly description: string;
   /**
+   * Default mode when `--mode` is not passed (e.g. `"development"` for `dev`,
+   * `"production"` for `build`/`preview`). Drives which `.env` files load.
+   */
+  readonly defaultMode: string;
+  /**
    * Execute the command.
    *
    * @param ctx  Fully-built execution context.

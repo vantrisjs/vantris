@@ -3,6 +3,7 @@ import { basename, dirname, extname, resolve, sep } from "node:path";
 import { bundleAsync } from "lightningcss";
 import type { Plugin } from "rolldown";
 import type { ResolvedPaths } from "../types/paths.js";
+import type { Resolver } from "../resolver/index.js";
 import { BuildError } from "../shared/errors.js";
 import { emitHashedAsset } from "./assets.js";
 
@@ -35,6 +36,8 @@ export interface StyleOptions {
   minify: boolean;
   /** PostCSS runner, when the project has a PostCSS config. */
   postcss?: PostcssRunner | null;
+  /** Central resolver, for aliases in `@import` and `url()`. */
+  resolver?: Resolver;
 }
 
 /**
@@ -133,7 +136,8 @@ export async function processStyle(
           if (options.postcss) css = await options.postcss(css, filePath);
           return css;
         },
-        resolve: (specifier, from) => resolve(dirname(from), specifier),
+        resolve: (specifier, from) =>
+          options.resolver?.alias(specifier) ?? resolve(dirname(from), specifier),
       },
     });
   } catch (error) {
@@ -148,7 +152,7 @@ export async function processStyle(
     if (dep.type === "url") {
       // Resolve relative to the file the url() actually appears in.
       const fromDir = dirname(dep.loc.filePath);
-      const target = await resolveStyleUrl(dep.url, fromDir, options.paths);
+      const target = await resolveStyleUrl(dep.url, fromDir, options);
       if (target) {
         const fileName = await emitHashedAsset(
           options.outDir,
@@ -183,15 +187,24 @@ export async function processStyle(
 async function resolveStyleUrl(
   url: string,
   fromDir: string,
-  paths: ResolvedPaths,
+  options: StyleOptions,
 ): Promise<string | null> {
-  if (/^(?:[a-z]+:)?\/\//i.test(url) || /^(?:data:|#)/i.test(url) || url.startsWith("/")) {
-    return null;
+  if (/^(?:[a-z]+:)?\/\//i.test(url) || /^(?:data:|#)/i.test(url)) return null;
+
+  const clean = url.split(/[?#]/, 1)[0] ?? url;
+  const aliased = options.resolver?.alias(clean);
+  let candidate: string;
+  if (aliased) {
+    candidate = aliased;
+  } else if (url.startsWith("/")) {
+    return null; // absolute → public asset, left untouched
+  } else {
+    candidate = resolve(fromDir, clean);
   }
-  const candidate = resolve(fromDir, url.split(/[?#]/, 1)[0] ?? url);
+
   const real = await realpath(candidate).catch(() => null);
   if (!real) return null;
-  const root = await realpath(paths.rootDir).catch(() => paths.rootDir);
+  const root = await realpath(options.paths.rootDir).catch(() => options.paths.rootDir);
   return real === root || real.startsWith(root + sep) ? real : null;
 }
 

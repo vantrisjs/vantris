@@ -1,5 +1,6 @@
 import type { ResolvedConfig } from "./config-resolved.js";
 import type { Logger } from "./logger.js";
+import type { Resolver } from "../resolver/index.js";
 
 /**
  * The execution context threaded into every command.
@@ -15,4 +16,10 @@ export interface Context {
   readonly config: ResolvedConfig;
   /** Injected logger. */
   readonly logger: Logger;
+  /** Active mode, e.g. `"development"`, `"production"`, or a custom mode. */
+  readonly mode: string;
+  /** Environment variables loaded for {@link mode} from the `.env` files. */
+  readonly env: Record<string, string>;
+  /** The central module resolver (aliases + extension resolution). */
+  readonly resolver: Resolver;
 }

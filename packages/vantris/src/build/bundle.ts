@@ -12,6 +12,7 @@ import type {
 } from "rolldown";
 import type { ResolvedConfig } from "../types/config-resolved.js";
 import type { AssetFileNames, ChunkFileNames } from "../types/config.js";
+import type { Resolver } from "../resolver/index.js";
 import { ASSET_EXTENSIONS } from "../shared/constants.js";
 import { BuildError } from "../shared/errors.js";
 import { cssPlugin, type PostcssRunner } from "./css.js";
@@ -26,6 +27,10 @@ export interface BundleInput {
   entries: Record<string, string>;
   /** Resolved Vantris configuration. */
   config: ResolvedConfig;
+  /** Central resolver, for alias resolution. */
+  resolver: Resolver;
+  /** `import.meta.env` replacements (token → JSON literal). */
+  define: Record<string, string>;
   /** PostCSS runner for the project, when configured. */
   postcss?: PostcssRunner | null;
 }
@@ -59,14 +64,20 @@ export async function bundle(input: BundleInput): Promise<BundleResult> {
     base: config.base,
     minify: build.minify,
     postcss: input.postcss ?? null,
+    resolver: input.resolver,
   };
   const inputOptions: InputOptions = {
     input: entries,
     cwd: paths.root,
     platform: "browser",
-    // Images/fonts/media imported from JS become hashed assets with absolute
-    // URLs from `base`; the CSS plugin handles styles (modules, url(), lazy).
-    plugins: [assetUrlPlugin(config.base), cssPlugin(styleOptions, cssByEntry)],
+    // `import.meta.env.*` is statically replaced.
+    transform: { define: input.define },
+    // Plugins run in order: alias resolution first, then asset/CSS handling.
+    plugins: [
+      aliasPlugin(input.resolver),
+      assetUrlPlugin(config.base),
+      cssPlugin(styleOptions, cssByEntry),
+    ],
     // Tree shaking is enabled by default.
   };
 
@@ -151,6 +162,21 @@ function toAssetNames(
       names: asset.names,
       originalFileNames: asset.originalFileNames,
     });
+}
+
+/**
+ * Internal bundler plugin applying the central {@link Resolver}'s aliases, so
+ * `import x from "@/foo"` resolves identically to dev/CSS/HTML — one
+ * implementation, no duplication.
+ */
+function aliasPlugin(resolver: Resolver): Plugin {
+  return {
+    name: "vantris:alias",
+    async resolveId(source, importer) {
+      if (!resolver.alias(source)) return null;
+      return (await resolver.resolveFile(source, importer)) ?? resolver.alias(source);
+    },
+  };
 }
 
 /**

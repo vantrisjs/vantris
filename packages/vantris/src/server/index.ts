@@ -1,11 +1,14 @@
 import { readFile } from "node:fs/promises";
+import { relative } from "node:path";
 import { getRequestURL } from "h3";
 import type { H3Event } from "h3";
 import type { Context } from "../types/context.js";
 import type { HtmlEntry } from "../types/html.js";
 import { injectDevClient } from "../html/index.js";
+import { envDefine } from "../env/index.js";
 import { createReloadSocket, type ReloadSocket } from "./websocket.js";
 import { createStaticLoader } from "./static.js";
+import type { AliasUrl } from "./rewrite.js";
 import { closeServer, createNodeServer, listen, localUrl } from "./node.js";
 
 /** Options for {@link startDevServer}. */
@@ -46,10 +49,16 @@ export async function startDevServer(
   const { ctx, entry } = options;
   const { paths, dev } = ctx.config;
 
+  const aliases: AliasUrl[] = ctx.resolver.aliases.map(({ find, replacement }) => ({
+    find,
+    url: `/${relative(paths.root, replacement)}`,
+  }));
   const loadAsset = createStaticLoader({
     root: paths.root,
     rootDir: paths.rootDir,
     publicDir: paths.publicDir,
+    define: envDefine(ctx.env, ctx.mode, ctx.config.base),
+    aliases,
   });
   const entryFile = entry?.file ?? null;
 

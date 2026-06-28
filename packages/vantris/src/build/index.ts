@@ -5,6 +5,7 @@ import type { HtmlEntry } from "../types/html.js";
 import { HTML_ENTRY_FILENAME } from "../shared/constants.js";
 import { BuildError, HtmlEntryError } from "../shared/errors.js";
 import { isFile } from "../utils/fs.js";
+import { envDefine } from "../env/index.js";
 import { bundle, entryFileName } from "./bundle.js";
 import {
   collectAssetRefs,
@@ -90,6 +91,8 @@ export async function runBuild(options: BuildOptions): Promise<BuildResult> {
   const { output, cssByEntry } = await bundle({
     entries: inputs,
     config: ctx.config,
+    resolver: ctx.resolver,
+    define: envDefine(ctx.env, ctx.mode, ctx.config.base),
     postcss,
   });
   log.info(
@@ -138,11 +141,12 @@ export async function runBuild(options: BuildOptions): Promise<BuildResult> {
     base,
     minify: build.minify,
     postcss,
+    resolver: ctx.resolver,
   };
   let assetCount = 0;
   for (const ref of collectAssetRefs(entry.html)) {
     if (entrySrcs.has(ref)) continue;
-    const file = resolveSourceRef(ref, paths);
+    const file = resolveSourceRef(ref, paths, ctx.resolver);
     if (!file || !(await isFile(file))) continue;
 
     let fileName: string;

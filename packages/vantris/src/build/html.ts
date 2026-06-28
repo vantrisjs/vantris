@@ -2,6 +2,7 @@ import { resolve, sep } from "node:path";
 import { basename } from "node:path";
 import type { HtmlEntry } from "../types/html.js";
 import type { ResolvedPaths } from "../types/paths.js";
+import type { Resolver } from "../resolver/index.js";
 import { BuildError } from "../shared/errors.js";
 
 /** A bundler entry derived from the HTML, plus how to rewrite the HTML. */
@@ -89,11 +90,14 @@ export function collectAssetRefs(html: string): string[] {
 export function resolveSourceRef(
   url: string,
   paths: ResolvedPaths,
+  resolver?: Resolver,
 ): string | null {
   if (/^(?:[a-z]+:)?\/\//i.test(url) || /^(?:data:|#|mailto:)/i.test(url)) {
     return null;
   }
-  const file = resolve(paths.root, url.replace(/^\/+/, ""));
+  // An alias (e.g. `@/logo.png`) resolves directly to a source file.
+  const aliased = resolver?.alias(url);
+  const file = aliased ?? resolve(paths.root, url.replace(/^\/+/, ""));
   const withinRoot =
     file === paths.rootDir || file.startsWith(paths.rootDir + sep);
   return withinRoot ? file : null;

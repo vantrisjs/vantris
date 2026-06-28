@@ -7,8 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_Reserved for future versions. Planned: env variables (`import.meta.env`), HMR,
-and a plugin system._
+_Reserved for future versions. Planned: HMR and a plugin system (the resolver,
+env, and config layers are already structured to host them)._
+
+## [0.5.0] - 2026-06-29
+
+Advanced configuration & environment, nearing a stable v1.0.0 core.
+
+### Added
+
+- **Environment variables** — a dedicated `env/` module loads `.env`,
+  `.env.local`, `.env.[mode]`, `.env.[mode].local` (later wins) for the active
+  mode. Internal API `loadEnv(mode, root)`.
+- **`import.meta.env`** — `VANTRIS_`-prefixed variables (plus built-ins `MODE`,
+  `DEV`, `PROD`, `BASE_URL`) are statically replaced in dev and build. Secrets
+  (unprefixed vars) never reach the bundle.
+- **Modes** — `--mode <mode>` on any command; `dev` defaults to `development`,
+  `build`/`preview` to `production`. Available as `ctx.mode` at runtime.
+- **Aliases** — `resolve.alias` resolved by a single central resolver used by
+  dev, build, HTML, and CSS — one implementation, no duplication.
+- **Config validation** — invalid configuration fails fast with the property
+  path, expected type, and received value (a `ConfigError`/`VantrisError`).
+- **Config surface** — the config now accepts a `resolve` section alongside
+  `dev`, `build`, and `preview`.
+- **Tests** — `.env` loading/priority, modes, exposure/prefixing, the resolver,
+  aliases (build + dev), and validation (88 tests total).
+
+### Changed
+
+- `Context` now carries `mode`, `env`, and the central `resolver`.
+- `createContext` loads + validates config, loads the mode's env, and wires the
+  resolver. No breaking changes to the public config.
+- The architecture is positioned for v1.x (plugins/hooks/HMR) via the resolver,
+  env, and config layers — without any public plugin API yet.
 
 ## [0.4.0] - 2026-06-28
 
@@ -177,7 +208,8 @@ transforms, HMR, plugins) are scaffolded as seams but not yet implemented.
 - **Build** — bundled with [tsup](https://tsup.egoist.dev/) to ESM with type
   declarations; type-checking via `tsc --noEmit`.
 
-[Unreleased]: https://github.com/vantrisjs/vantris/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/vantrisjs/vantris/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/vantrisjs/vantris/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/vantrisjs/vantris/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/vantrisjs/vantris/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/vantrisjs/vantris/compare/v0.1.0...v0.2.0

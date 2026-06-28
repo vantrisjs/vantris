@@ -5,6 +5,7 @@ import type { Config } from "../src/types/config.js";
 import type { Context } from "../src/types/context.js";
 import type { Logger } from "../src/types/logger.js";
 import { resolveConfig } from "../src/config/resolve.js";
+import { createResolver } from "../src/resolver/index.js";
 import { runBuild, type BuildResult } from "../src/build/index.js";
 import { detectHtmlEntry } from "../src/html/index.js";
 
@@ -52,9 +53,19 @@ export function silentLogger(): CapturingLogger {
 export function makeContext(
   dir: string,
   config: Config = {},
+  options: { mode?: string; env?: Record<string, string> } = {},
 ): { ctx: Context; logger: CapturingLogger } {
   const logger = silentLogger();
-  return { ctx: { cwd: dir, config: resolveConfig(config, dir), logger }, logger };
+  const resolved = resolveConfig(config, dir);
+  const ctx: Context = {
+    cwd: dir,
+    config: resolved,
+    logger,
+    mode: options.mode ?? "test",
+    env: options.env ?? {},
+    resolver: createResolver(resolved.resolve),
+  };
+  return { ctx, logger };
 }
 
 /** Polls `condition` until it is true, or rejects after `timeout` ms. */
@@ -101,9 +112,10 @@ export interface BuildRun {
 export async function buildProject(
   files: Record<string, string>,
   config: Config = {},
+  options: { mode?: string; env?: Record<string, string> } = {},
 ): Promise<BuildRun> {
   const dir = await makeProject(files);
-  const { ctx, logger } = makeContext(dir, config);
+  const { ctx, logger } = makeContext(dir, config, options);
   const entry = await detectHtmlEntry(ctx.config.paths.root);
   const result = await runBuild({ ctx, entry });
   return { dir, result, logger, dist: await listFiles(join(dir, "dist")) };

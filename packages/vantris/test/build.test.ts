@@ -133,6 +133,38 @@ describe("runBuild", () => {
     expect(dist).not.toContain("stale.txt");
   });
 
+  describe("aliases & env", () => {
+    it("resolves aliases in the bundle", async () => {
+      const { dir, result } = await build(
+        {
+          "index.html": HTML,
+          "src/main.ts": `import { x } from "@/lib";\nconsole.log(x);`,
+          "src/lib.ts": `export const x = "ALIASED_42";`,
+        },
+        { resolve: { alias: { "@": "./src" } } },
+      );
+      expect(await read(dir, `dist/${result.entries[0]!.fileName}`)).toContain(
+        "ALIASED_42",
+      );
+    });
+
+    it("replaces import.meta.env (prefixed only) from the loaded env", async () => {
+      const { dir, result } = await build(
+        {
+          "index.html": HTML,
+          "src/main.ts":
+            `console.log(import.meta.env.MODE, import.meta.env.VANTRIS_X, import.meta.env.SECRET);`,
+        },
+        {},
+        { mode: "production", env: { VANTRIS_X: "EXPOSED", SECRET: "HIDDEN" } },
+      );
+      const js = await read(dir, `dist/${result.entries[0]!.fileName}`);
+      expect(js).toContain("production");
+      expect(js).toContain("EXPOSED");
+      expect(js).not.toContain("HIDDEN");
+    });
+  });
+
   describe("errors", () => {
     it("throws HtmlEntryError when there is no index.html", async () => {
       await expect(build({ "src/main.ts": "1;" })).rejects.toBeInstanceOf(HtmlEntryError);

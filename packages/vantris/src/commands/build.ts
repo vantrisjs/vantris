@@ -6,6 +6,7 @@ import { inspectProject } from "./support.js";
 export const build: Command = {
   name: "build",
   description: "Build the project for production",
+  defaultMode: "production",
   async run(ctx) {
     const entry = await inspectProject(ctx);
     await runBuild({ ctx, entry });

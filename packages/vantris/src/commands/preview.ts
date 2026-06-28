@@ -7,6 +7,7 @@ import { waitForShutdown } from "./support.js";
 export const preview: Command = {
   name: "preview",
   description: "Locally preview a production build",
+  defaultMode: "production",
   async run(ctx) {
     const log = ctx.logger;
     const server = await startPreviewServer({ ctx });

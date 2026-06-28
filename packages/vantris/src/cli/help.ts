@@ -20,8 +20,10 @@ export function helpText(): string {
   lines.push(
     "",
     "Options:",
+    "  --mode <mode>  Set the mode (e.g. development, production, staging)",
     "  -h, --help     Show this help",
     "  -v, --version  Show the version number",
+    "  --verbose      Verbose logging",
   );
 
   return lines.join("\n");

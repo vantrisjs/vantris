@@ -8,6 +8,7 @@
     "dev": "vantris dev",
     "build": "vantris build",
     "preview": "vantris preview",
+    "helper": "vantris --help",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

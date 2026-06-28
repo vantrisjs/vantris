@@ -17,4 +17,9 @@ export default defineConfig({
     host: "localhost",
     open: false,
   },
+  resolve: {
+    alias: {
+      "@": "./src",
+    },
+  },
 });

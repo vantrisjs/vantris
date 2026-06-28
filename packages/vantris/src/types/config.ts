@@ -165,6 +165,24 @@ export interface PreviewConfig {
   open?: boolean;
 }
 
+/**
+ * Module-resolution options, shared by dev, build, HTML, and CSS.
+ */
+export interface ResolveConfig {
+  /**
+   * Import aliases. Each key is matched as a prefix and replaced with a path
+   * (relative to `root`, or absolute). Applied everywhere a specifier is
+   * resolved.
+   *
+   * @example { "@": "./src", "~": "./shared" }
+   */
+  alias?: Record<string, string>;
+
+  // Reserved for future versions (no behaviour yet):
+  //   extensions?: string[];   // override the default resolution extensions
+  //   conditions?: string[];   // export-map conditions
+}
+
 export interface Config {
   /**
    * Project root. Resolved relative to the current working directory.
@@ -220,6 +238,11 @@ export interface Config {
    * Preview server options. See {@link PreviewConfig}.
    */
   preview?: PreviewConfig;
+
+  /**
+   * Module-resolution options (aliases, …). See {@link ResolveConfig}.
+   */
+  resolve?: ResolveConfig;
 
   // ───────────────────────────────────────────────────────────────────────
   // Reserved for future versions. Declared here as a contract so consumers

@@ -3,6 +3,7 @@ import { extname, join, resolve, sep } from "node:path";
 import { isFile } from "../utils/fs.js";
 import { contentTypeFor } from "./mime.js";
 import { shouldTranspile, transpile } from "./transform.js";
+import { rewriteImports, type AliasUrl } from "./rewrite.js";
 
 /** Extensions tried when a request has no extension (bare module imports). */
 const RESOLVE_EXTENSIONS = [".ts", ".tsx", ".mts", ".js", ".mjs", ".jsx"];
@@ -28,6 +29,10 @@ export interface StaticLoaderOptions {
   rootDir: string;
   /** Public directory whose contents are served at `/` (Vite-style). */
   publicDir: string;
+  /** `import.meta.env` replacements applied during transpilation. */
+  define?: Record<string, string>;
+  /** Alias → dev-URL rewrites applied to transpiled module imports. */
+  aliases?: readonly AliasUrl[];
 }
 
 /**
@@ -45,6 +50,8 @@ export function createStaticLoader(options: StaticLoaderOptions) {
   const root = resolve(options.root);
   const rootDir = resolve(options.rootDir);
   const publicDir = resolve(options.publicDir);
+  const define = options.define;
+  const aliases = options.aliases ?? [];
 
   return async function loadAsset(
     pathname: string,
@@ -55,11 +62,11 @@ export function createStaticLoader(options: StaticLoaderOptions) {
     // 1. Source files: resolved against the root but confined to `rootDir`,
     //    so only the source subtree (e.g. `/src/*`) is ever served.
     const source = await resolveConfined(root, rootDir, relative);
-    if (source) return readAsset(source);
+    if (source) return readAsset(source, define, aliases);
 
     // 2. Public assets: served at `/` (e.g. `/favicon.svg`).
     const asset = await resolveConfined(publicDir, publicDir, relative);
-    if (asset) return readAsset(asset);
+    if (asset) return readAsset(asset, define, aliases);
 
     return null;
   };
@@ -93,14 +100,19 @@ async function resolveConfined(
 }
 
 /** Reads a file, transpiling it when needed, and resolves its content type. */
-async function readAsset(file: string): Promise<LoadedAsset> {
+async function readAsset(
+  file: string,
+  define: Record<string, string> | undefined,
+  aliases: readonly AliasUrl[],
+): Promise<LoadedAsset> {
   const ext = extname(file).toLowerCase();
   const isHtml = ext === ".html";
 
   if (shouldTranspile(file)) {
     const source = await readFile(file, "utf8");
+    const transpiled = await transpile(source, file, define);
     return {
-      body: await transpile(source, file),
+      body: rewriteImports(transpiled, aliases),
       contentType: contentTypeFor(file, true),
       isHtml: false,
     };

@@ -61,10 +61,54 @@ vantris preview   # serve dist/ (http://localhost:4173)
 | `vantris build`   | Produce an optimised production build in `outDir`.  |
 | `vantris preview` | Serve the built `outDir` locally (no compilation).  |
 
-Global flags: `--help` / `-h`, `--version` / `-v`, `--verbose` / `--debug`.
+Global flags: `--mode <mode>`, `--help` / `-h`, `--version` / `-v`,
+`--verbose` / `--debug`.
 
 The CLI only parses arguments and routes to a command — all behaviour lives in
 the command modules.
+
+## Modes & environment variables
+
+Each command runs in a **mode** — `dev` defaults to `development`, `build` and
+`preview` to `production`. Override it with `--mode`:
+
+```bash
+vantris dev --mode staging
+vantris build --mode production
+vantris preview --mode local
+```
+
+The mode selects which `.env` files load (later files override earlier):
+
+```text
+.env
+.env.local
+.env.[mode]
+.env.[mode].local
+```
+
+Only variables prefixed `VANTRIS_` are exposed to client code via
+`import.meta.env` (so secrets in `.env` never reach the bundle), along with the
+built-ins `MODE`, `DEV`, `PROD`, and `BASE_URL`:
+
+```ts
+// .env.production → VANTRIS_API=https://api.example.com
+console.log(import.meta.env.VANTRIS_API); // "https://api.example.com"
+console.log(import.meta.env.MODE, import.meta.env.PROD); // "production" true
+```
+
+## Aliases
+
+A single resolver applies `resolve.alias` everywhere — dev, build, HTML, and
+CSS:
+
+```ts
+import { thing } from "@/thing";   // JS/TS
+@import "@/styles/base.css";        /* CSS */
+```
+```html
+<link rel="icon" href="@/favicon.svg" />
+```
 
 ## Configuration
 
@@ -104,8 +148,19 @@ export default defineConfig({
     host: "localhost",
     open: false,             // open the browser on start
   },
+
+  // Module resolution
+  resolve: {
+    alias: {
+      "@": "./src",          // import x from "@/utils"
+      "~": "./shared",
+    },
+  },
 });
 ```
+
+The config is validated on load: an invalid value fails fast with the property
+path, the expected type, and the value received.
 
 Output naming options are Vantris-owned (no `rolldownOptions` escape hatch) and
 each accepts a **string pattern or a function**:

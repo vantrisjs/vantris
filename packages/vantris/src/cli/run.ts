@@ -32,7 +32,8 @@ export async function run(
   const logger = options.logger ?? createLogger({ verbose });
   const cwd = options.cwd ?? process.cwd();
 
-  const [first, ...rest] = argv.filter((arg) => !isGlobalFlag(arg));
+  const { mode: modeFlag, args } = extractMode(argv);
+  const [first, ...rest] = args.filter((arg) => !isGlobalFlag(arg));
 
   if (!first || first === "--help" || first === "-h" || first === "help") {
     logger.info(helpText());
@@ -51,9 +52,32 @@ export async function run(
     return ExitCode.Error;
   }
 
-  const ctx = await createContext({ cwd, logger });
+  const mode = modeFlag ?? command.defaultMode;
+  const ctx = await createContext({ cwd, logger, mode });
   await command.run(ctx, rest);
   return ExitCode.Ok;
+}
+
+/** Extracts `--mode <value>` / `--mode=<value>`, returning the rest of argv. */
+function extractMode(argv: readonly string[]): {
+  mode: string | undefined;
+  args: string[];
+} {
+  const args: string[] = [];
+  let mode: string | undefined;
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]!;
+    if (arg === "--mode") {
+      mode = argv[++i];
+      continue;
+    }
+    if (arg.startsWith("--mode=")) {
+      mode = arg.slice("--mode=".length);
+      continue;
+    }
+    args.push(arg);
+  }
+  return { mode, args };
 }
 
 /** Flags handled by the runner itself rather than passed to commands. */

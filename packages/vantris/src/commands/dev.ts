@@ -21,6 +21,7 @@ const RELOAD_DEBOUNCE_MS = 50;
 export const dev: Command = {
   name: "dev",
   description: "Start the development server",
+  defaultMode: "development",
   async run(ctx) {
     const { root, rootDir, publicDir } = ctx.config.paths;
     await prepareDirectories(ctx, [rootDir, publicDir]);

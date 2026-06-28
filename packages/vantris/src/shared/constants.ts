@@ -2,7 +2,7 @@
 export const APP_NAME = "vantris";
 
 /** Current Vantris version. Kept in sync with package.json at release time. */
-export const VERSION = "0.4.0";
+export const VERSION = "0.5.0";
 
 /** The HTML entry filename Vantris looks for at the project root. */
 export const HTML_ENTRY_FILENAME = "index.html";
@@ -34,6 +34,17 @@ export const PREVIEW_DEFAULTS = {
   host: "localhost",
   open: false,
 } as const;
+
+/** Default extensions tried when resolving an extensionless import. */
+export const RESOLVE_EXTENSIONS = [
+  ".ts",
+  ".tsx",
+  ".mts",
+  ".js",
+  ".mjs",
+  ".jsx",
+  ".json",
+] as const;
 
 /**
  * File extensions the build treats as bundler assets — imported in JS they are
