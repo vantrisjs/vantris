@@ -1,5 +1,19 @@
-export type { Config, ConfigFn, ConfigInput, DevConfig } from "./config.js";
-export type { ResolvedConfig, ResolvedDevConfig } from "./config-resolved.js";
+export type {
+  Config,
+  ConfigFn,
+  ConfigInput,
+  DevConfig,
+  BuildConfig,
+  ChunkInfo,
+  AssetInfo,
+  ChunkFileNames,
+  AssetFileNames,
+} from "./config.js";
+export type {
+  ResolvedConfig,
+  ResolvedDevConfig,
+  ResolvedBuildConfig,
+} from "./config-resolved.js";
 export type { ResolvedPaths } from "./paths.js";
 export type { Logger } from "./logger.js";
 export type { HtmlEntry, HtmlModuleScript } from "./html.js";

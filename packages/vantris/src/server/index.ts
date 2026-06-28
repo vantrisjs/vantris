@@ -91,14 +91,15 @@ export async function startDevServer(
   const server: HttpServer = createServer(toNodeHandler(app));
   const reload: ReloadSocket = createReloadSocket({ server, logger: ctx.logger });
 
-  await listen(server, dev.port, dev.host);
+  // The actual bound port — important when `port` is 0 (OS-assigned).
+  const port = await listen(server, dev.port, dev.host);
 
-  const url = `http://${dev.host}:${dev.port}/`;
+  const url = `http://${dev.host}:${port}/`;
 
   return {
     url,
     host: dev.host,
-    port: dev.port,
+    port,
     broadcastReload: () => reload.broadcastReload(),
     async close() {
       await reload.close();
@@ -109,8 +110,8 @@ export async function startDevServer(
   };
 }
 
-/** Promisified `server.listen` with error propagation. */
-function listen(server: HttpServer, port: number, host: string): Promise<void> {
+/** Promisified `server.listen`; resolves with the actual bound port. */
+function listen(server: HttpServer, port: number, host: string): Promise<number> {
   return new Promise((resolveListen, reject) => {
     const onError = (err: NodeJS.ErrnoException) => {
       server.removeListener("error", onError);
@@ -123,7 +124,10 @@ function listen(server: HttpServer, port: number, host: string): Promise<void> {
     server.once("error", onError);
     server.listen(port, host, () => {
       server.removeListener("error", onError);
-      resolveListen();
+      const address = server.address();
+      resolveListen(
+        typeof address === "object" && address ? address.port : port,
+      );
     });
   });
 }

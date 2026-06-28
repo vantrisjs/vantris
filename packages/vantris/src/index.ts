@@ -20,6 +20,10 @@ export {
 export { startDevServer } from "./server/index.js";
 export type { DevServerOptions, DevServerHandle } from "./server/index.js";
 
+// Build system
+export { runBuild } from "./build/index.js";
+export type { BuildOptions, BuildResult } from "./build/index.js";
+
 // Context & services
 export { createContext, createLogger, createWatcher } from "./shared/index.js";
 export type { Watcher, WatcherOptions, WatchEvent } from "./shared/index.js";
@@ -27,6 +31,7 @@ export {
   VantrisError,
   ConfigError,
   HtmlEntryError,
+  BuildError,
   NotImplementedError,
   isVantrisError,
 } from "./shared/errors.js";
@@ -42,8 +47,14 @@ export type {
   ConfigFn,
   ConfigInput,
   DevConfig,
+  BuildConfig,
+  ChunkInfo,
+  AssetInfo,
+  ChunkFileNames,
+  AssetFileNames,
   ResolvedConfig,
   ResolvedDevConfig,
+  ResolvedBuildConfig,
   ResolvedPaths,
   Logger,
   HtmlEntry,

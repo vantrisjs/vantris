@@ -25,6 +25,8 @@ implemented.
 ```bash
 pnpm install
 pnpm build            # compile the vantris package
+pnpm test             # run the test suite (Vitest)
+pnpm typecheck        # strict type-check every package
 
 # drive the CLI from the playground (uses the workspace package)
 pnpm play:dev
@@ -41,7 +43,7 @@ pnpm play:preview
 | `config/`   | `defineConfig`, config loading, defaults, resolution.   |
 | `html/`     | HTML entry detection, module-script analysis, dev-client injection. |
 | `server/`   | H3 dev server: routing, static serving, esbuild transpile, WebSocket reload. |
-| `build/`    | Build seam (planned: Rolldown + esbuild).               |
+| `build/`    | Rolldown build pipeline: bundle, HTML, assets, output (split by responsibility). |
 | `preview/`  | Preview seam (planned: static server over `outDir`).    |
 | `shared/`   | Context factory, logger, file watcher, errors, constants. |
 | `types/`    | Public & internal type contracts.                       |
@@ -67,14 +69,34 @@ export default defineConfig({
   rootDir: "./src",      // default
   publicDir: "./public", // default
   outDir: "./dist",      // default
+  base: "/",             // default — public base path for built URLs
   dev: {
     port: 3000,          // default
     host: "localhost",   // default
   },
+  build: {
+    minify: true,         // default
+    sourcemap: false,     // default — or true | "inline" | "hidden"
+    assetsDir: "assets",  // default — drives the *FileNames patterns below
+    entryFileNames: "assets/[name]-[hash].js",      // default
+    chunkFileNames: "assets/[name]-[hash].js",      // default
+    assetFileNames: "assets/[name]-[hash][extname]", // default
+  },
 });
 ```
 
-All fields are optional; the defaults above apply when omitted.
+All fields are optional; the defaults above apply when omitted. Build output
+options (`entryFileNames`, `chunkFileNames`, `assetFileNames`) are first-class
+and Vantris-owned — there is no `rolldownOptions` escape hatch and the bundler
+is never exposed. Each accepts a **string pattern or a function**:
+
+```ts
+build: {
+  // function form — receives a Vantris ChunkInfo / AssetInfo
+  entryFileNames: (chunk) => `js/${chunk.name}.[hash].js`,
+  assetFileNames: (asset) => `media/${asset.names[0]}`,
+}
+```
 
 ## Dev server (v0.2.0)
 
@@ -89,5 +111,32 @@ reloads the browser on file changes via an injected WebSocket client.
 Serving follows a Vite-style allowlist: source modules come from `rootDir`
 (`/src/*`), `public/` contents are served at `/`, and everything else under the
 project root (`node_modules`, `package.json`, lockfiles, config files) is **not**
-reachable. HMR, plugins, and the production build are intentionally **not** part
-of this version.
+reachable. HMR is intentionally **not** part of this version.
+
+## Production build (v0.3.0)
+
+```bash
+pnpm play:build        # runs `vantris build` in the playground
+```
+
+`vantris build` cleans `outDir`, analyses `index.html` to find the
+`<script type="module">` entry, and bundles the app with
+[Rolldown](https://rolldown.rs/) — tree shaking, minification, and code
+splitting included. The emitted `dist/index.html` is rewritten to reference the
+hashed output, and `public/` is copied verbatim.
+
+What gets processed (Vite-style):
+
+- **JS-imported assets** (`import url from "./logo.svg"`) → hashed files with
+  **absolute** URLs derived from `base`.
+- **CSS** (`import "./style.css"`) → collected per entry, processed with
+  [lightningcss](https://lightningcss.dev/), emitted as a hashed `.css` with a
+  `<link>` injected. Includes **`url()` rewriting**, **CSS Modules**
+  (`*.module.css`), **Sass/Less** (when installed), **PostCSS** (when a
+  `postcss.config.*` exists), and **CSS code splitting** for lazy chunks.
+- **HTML `src`/`href`** in `<link>`/`<img>`/`<script>` that point **into
+  `rootDir`** (e.g. `/src/icon.svg`) → hashed and rewritten. Public and external
+  references (`/logo.png`, `https://…`) are left untouched.
+
+Rolldown is an internal dependency and is never exposed in the public config.
+HMR and a plugin system are intentionally **not** part of this version.

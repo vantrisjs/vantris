@@ -21,6 +21,11 @@ export class HtmlEntryError extends VantrisError {
   override readonly name = "HtmlEntryError";
 }
 
+/** Thrown when the production build fails (bundling, HTML, asset copy, …). */
+export class BuildError extends VantrisError {
+  override readonly name = "BuildError";
+}
+
 /** Thrown for functionality declared but not yet implemented in this version. */
 export class NotImplementedError extends VantrisError {
   override readonly name = "NotImplementedError";

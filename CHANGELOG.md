@@ -7,8 +7,82 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_Reserved for future versions. Planned: build pipeline (Rolldown), HMR, and a
-plugin system._
+_Reserved for future versions. Planned: `preview`, HMR, and a plugin system._
+
+## [0.3.0] - 2026-06-28
+
+Production build system. `vantris build` bundles the app with
+[Rolldown](https://rolldown.rs/) into an optimised `dist/`. Rolldown is an
+internal dependency — its API is never exposed to users.
+
+### Added
+
+- **Build command** — `vantris build` produces an optimised build into
+  `outDir`, cleaning the directory first.
+- **Build pipeline** — split by responsibility under `build/`: `bundle.ts`
+  (Rolldown integration), `html.ts` (entry resolution + output HTML),
+  `assets.ts` (public copy), `output.ts` (clean + write), and `index.ts`
+  (orchestration, logging, timing).
+- **Rolldown bundling** — bundling, tree shaking, minification, and code
+  splitting. Vantris translates its own config into Rolldown's options; the
+  bundler stays entirely internal.
+- **HTML-driven entry** — `index.html` is analysed and its
+  `<script type="module">` becomes the build entry; the emitted
+  `dist/index.html` is rewritten to reference the hashed output.
+- **Public assets** — `public/` is copied verbatim into `dist/` (before the
+  generated HTML, which takes precedence over any `public/index.html`).
+- **JS-imported assets** — images, fonts, and media imported from JS
+  (`import url from "./logo.svg"`) are emitted as hashed files with **absolute**
+  URLs derived from `base`, so they resolve under any deploy path. Handled by an
+  internal bundler plugin (Rolldown is still never exposed); source maps stay
+  accurate via `magic-string`.
+- **CSS pipeline** — a full, Vite-style CSS pipeline (Rolldown no longer bundles
+  CSS; Vantris handles it internally via [lightningcss](https://lightningcss.dev/)):
+  - `import "./style.css"` → collected per entry, emitted as a hashed `.css`,
+    `<link>` injected into the HTML.
+  - **`url()` rewriting** — `url(./img.png)` inside CSS is hashed, emitted, and
+    rewritten (absolute from `base`); external/public URLs are left alone.
+  - **`@import` inlining** — `@import "./other.css"` is resolved and inlined
+    (each imported file goes through preprocessing + PostCSS, and its `url()`s
+    resolve relative to itself).
+  - **CSS Modules** — `*.module.css` are scoped and expose a class map to JS
+    (`import styles from "./x.module.css"`).
+  - **Preprocessors** — `.scss`/`.sass`/`.less` compiled when `sass`/`less` are
+    installed (optional peer deps).
+  - **PostCSS** — runs automatically when a `postcss.config.*` is present
+    (Tailwind, autoprefixer, …).
+  - **CSS code splitting** — CSS imported by a dynamically-imported chunk is
+    emitted separately and loaded at runtime when that chunk loads.
+  - Minification and nesting/modern-CSS lowering via lightningcss.
+- **HTML asset references** — `src`/`href` in `<link>`, `<img>`, `<script>`,
+  `<source>` that point **into `rootDir`** (e.g. `/src/icon.svg`,
+  `/src/page.css`) are hashed, emitted, and rewritten (stylesheets go through
+  the full CSS pipeline). Public and external references (`/logo.png`,
+  `https://…`) are left untouched.
+- **`base` option** — public base path (default `/`), prefixed to built asset
+  and entry URLs for deploys under a sub-path or CDN.
+- **Multiple HTML entries** — every `<script type="module">` in `index.html`
+  becomes a bundler entry (each rewritten to its hashed output), not just the
+  first. `BuildResult` reports `entries: { src, fileName }[]`.
+- **Test suite** — [Vitest](https://vitest.dev/) (run with `pnpm test`) covering:
+  - config resolution, HTML parsing/injection;
+  - the full build pipeline (bundling, tree shaking, code splitting, asset URLs,
+    source maps, multi-entry, public copy, cleaning, every error path);
+  - the CSS pipeline (`url()`, `@import`, CSS Modules, Sass, Less, PostCSS,
+    lazy code splitting);
+  - the **dev server** (HTTP transpile-on-the-fly, the Vite-style serving
+    allowlist, WebSocket live reload) and the file watcher.
+- The dev server now reports the **actual** bound port (so `port: 0` works for
+  an OS-assigned port).
+- **Configuration** — new `build` option (`BuildConfig`): `minify`,
+  `sourcemap` (`boolean | "inline" | "hidden"`), `assetsDir`, and first-class
+  output naming (`entryFileNames`, `chunkFileNames`, `assetFileNames`). Each
+  naming option accepts a **string pattern or a function** over a Vantris-owned
+  `ChunkInfo`/`AssetInfo`. All Vantris-owned and Vantris-typed — no
+  `rolldownOptions` escape hatch, the bundler is never exposed. Shaped to grow
+  (target, manifest, plugins…).
+- **Errors** — `BuildError` (a `VantrisError`) with explicit messages; an
+  `outDir` safety guard refuses to clean a directory overlapping the project.
 
 ## [0.2.0] - 2026-06-27
 
@@ -70,6 +144,7 @@ transforms, HMR, plugins) are scaffolded as seams but not yet implemented.
 - **Build** — bundled with [tsup](https://tsup.egoist.dev/) to ESM with type
   declarations; type-checking via `tsc --noEmit`.
 
-[Unreleased]: https://github.com/vantrisjs/vantris/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/vantrisjs/vantris/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/vantrisjs/vantris/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/vantrisjs/vantris/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/vantrisjs/vantris/releases/tag/v0.1.0

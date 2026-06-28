@@ -9,6 +9,15 @@ export async function isFile(path: string): Promise<boolean> {
   }
 }
 
+/** Returns `true` if `path` exists and is a directory. */
+export async function isDirectory(path: string): Promise<boolean> {
+  try {
+    return (await stat(path)).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
 /** Reads a UTF-8 text file. */
 export function readTextFile(path: string): Promise<string> {
   return readFile(path, "utf8");

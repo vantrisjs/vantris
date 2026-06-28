@@ -2,7 +2,7 @@
 export const APP_NAME = "vantris";
 
 /** Current Vantris version. Kept in sync with package.json at release time. */
-export const VERSION = "0.2.0";
+export const VERSION = "0.3.0";
 
 /** The HTML entry filename Vantris looks for at the project root. */
 export const HTML_ENTRY_FILENAME = "index.html";
@@ -20,6 +20,27 @@ export const DEV_DEFAULTS = {
   port: 3000,
   host: "localhost",
 } as const;
+
+/** Default production-build options. */
+export const BUILD_DEFAULTS = {
+  minify: true,
+  sourcemap: false,
+  assetsDir: "assets",
+} as const;
+
+/**
+ * File extensions the build treats as bundler assets — imported in JS they are
+ * emitted as hashed files and the import resolves to their URL. Extend this
+ * list to support more resource types (images, fonts, media, …).
+ */
+export const ASSET_EXTENSIONS = [
+  // images
+  ".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".ico", ".bmp",
+  // fonts
+  ".woff", ".woff2", ".ttf", ".otf", ".eot",
+  // media
+  ".mp4", ".webm", ".ogg", ".mp3", ".wav", ".flac", ".aac",
+] as const;
 
 /**
  * Message the dev server pushes over the WebSocket to ask the client to
