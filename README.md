@@ -1,6 +1,6 @@
 # Vantris
 
-A modern, fast bundler for JavaScript/TypeScript — **v0.4.0**.
+A modern, fast bundler for JavaScript/TypeScript — **v0.6.0**.
 
 Vantris gives you a complete development cycle behind three commands —
 `dev`, `build`, and `preview` — powered by [H3](https://h3.dev/),
