@@ -18,16 +18,17 @@ function rel(ctx: Context, target: string): string {
 export async function inspectProject(ctx: Context): Promise<HtmlEntry | null> {
   const { paths, configFile } = ctx.config;
 
-  ctx.logger.info(
+  // Diagnostics — visible with --verbose, out of the way otherwise.
+  ctx.logger.debug(
     `config: ${configFile ? rel(ctx, configFile) : "defaults (no config file)"}`,
   );
-  ctx.logger.info(`rootDir:   ${rel(ctx, paths.rootDir)}`);
-  ctx.logger.info(`publicDir: ${rel(ctx, paths.publicDir)}`);
-  ctx.logger.info(`outDir:    ${rel(ctx, paths.outDir)}`);
+  ctx.logger.debug(`rootDir: ${rel(ctx, paths.rootDir)}`);
+  ctx.logger.debug(`publicDir: ${rel(ctx, paths.publicDir)}`);
+  ctx.logger.debug(`outDir: ${rel(ctx, paths.outDir)}`);
 
   const entry = await detectHtmlEntry(paths.root);
   if (entry) {
-    ctx.logger.info(`html entry: ${rel(ctx, entry.file)}`);
+    ctx.logger.debug(`html entry: ${rel(ctx, entry.file)}`);
   } else {
     ctx.logger.warn(
       "no index.html found at the project root; nothing to serve yet.",

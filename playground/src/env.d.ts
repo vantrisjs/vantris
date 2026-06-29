@@ -1,0 +1,1 @@
+/// <reference types="vantris/client" />

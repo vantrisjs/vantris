@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-import { createLogger } from "../shared/logger.js";
-import { isVantrisError } from "../shared/errors.js";
+import { renderError } from "../logger/index.js";
 import { ExitCode, run } from "./run.js";
 
 /**
@@ -12,14 +11,9 @@ async function main(): Promise<void> {
     const code = await run(process.argv.slice(2));
     process.exitCode = code;
   } catch (error) {
-    const logger = createLogger();
-    if (isVantrisError(error)) {
-      // Expected, user-facing failures: show the message, skip the stack.
-      logger.error(error.message);
-    } else {
-      logger.error("An unexpected error occurred:");
-      logger.error(error instanceof Error ? (error.stack ?? error.message) : String(error));
-    }
+    const verbose =
+      process.argv.includes("--verbose") || process.argv.includes("--debug");
+    process.stderr.write(`${renderError(error, verbose)}\n`);
     process.exitCode = ExitCode.Error;
   }
 }

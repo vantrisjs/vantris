@@ -2,6 +2,7 @@ import { relative } from "node:path";
 import type { Command } from "../types/command.js";
 import { startPreviewServer } from "../preview/index.js";
 import { waitForShutdown } from "./support.js";
+import { printServerPanel } from "./ui.js";
 
 /** `vantris preview` — serve the production build from `outDir` locally. */
 export const preview: Command = {
@@ -9,17 +10,19 @@ export const preview: Command = {
   description: "Locally preview a production build",
   defaultMode: "production",
   async run(ctx) {
-    const log = ctx.logger;
     const server = await startPreviewServer({ ctx });
 
-    log.info(`preview ready in ${server.startupMs}ms`);
-    log.info(`  local:   ${server.url}`);
-    if (server.networkUrl) log.info(`  network: ${server.networkUrl}`);
-    log.info(`  serving: ${relative(ctx.config.paths.root, server.root) || "."}`);
+    printServerPanel(ctx.logger, {
+      kind: "preview",
+      local: server.url,
+      network: server.networkUrl,
+      mode: ctx.mode,
+      startupMs: server.startupMs,
+      serving: relative(ctx.config.paths.root, server.root) || ".",
+    });
 
     await waitForShutdown();
-
-    log.info("shutting down…");
+    ctx.logger.info("shutting down…");
     await server.close();
   },
 };

@@ -58,7 +58,7 @@ export async function runBuild(options: BuildOptions): Promise<BuildResult> {
   const started = Date.now();
   const rel = (p: string) => relative(paths.root, p) || ".";
 
-  log.info("building for production…");
+  log.debug("building for production…");
 
   if (!entry) {
     throw new HtmlEntryError(
@@ -79,14 +79,14 @@ export async function runBuild(options: BuildOptions): Promise<BuildResult> {
   // Refuse to wipe anything that would destroy the project.
   assertSafeOutDir(paths.outDir, paths.root, paths.rootDir, paths.publicDir);
 
-  log.info(`cleaning ${rel(paths.outDir)}${sep}`);
+  log.debug(`cleaning ${rel(paths.outDir)}${sep}`);
   await cleanOutDir(paths.outDir);
 
   const inputs = Object.fromEntries(
     htmlEntries.map((e) => [e.name, e.entryFile]),
   );
   const postcss = await loadPostcss(paths.root);
-  log.info(
+  log.debug(
     `bundling ${htmlEntries.length} entr${htmlEntries.length === 1 ? "y" : "ies"} with Rolldown…`,
   );
   const { output, cssByEntry } = await bundle({
@@ -96,7 +96,7 @@ export async function runBuild(options: BuildOptions): Promise<BuildResult> {
     define: envDefine(ctx.env, ctx.mode, ctx.config.base),
     postcss,
   });
-  log.info(
+  log.debug(
     `bundled ${output.length} file(s)` +
       (build.minify ? " (minified)" : "") +
       (build.sourcemap ? " + sourcemaps" : ""),
@@ -105,7 +105,7 @@ export async function runBuild(options: BuildOptions): Promise<BuildResult> {
   // Copy public assets first, then write the generated HTML last so it always
   // wins over a `public/index.html` (which would otherwise shadow the entry).
   if (await copyPublicDir(paths.publicDir, paths.outDir)) {
-    log.info(`copied ${rel(paths.publicDir)}${sep} → ${rel(paths.outDir)}${sep}`);
+    log.debug(`copied ${rel(paths.publicDir)}${sep} → ${rel(paths.outDir)}${sep}`);
     if (await isFile(join(paths.publicDir, HTML_ENTRY_FILENAME))) {
       log.warn(
         `public/${HTML_ENTRY_FILENAME} is ignored — the generated entry HTML takes precedence.`,
@@ -171,12 +171,12 @@ export async function runBuild(options: BuildOptions): Promise<BuildResult> {
   html = injectStylesheets(html, stylesheets);
   await writeHtml(paths.outDir, html);
 
-  if (stylesheets.length > 0) log.info(`css: ${stylesheets.length} stylesheet(s)`);
-  if (assetCount > 0) log.info(`html assets: ${assetCount} rewritten from rootDir`);
+  if (stylesheets.length > 0) log.debug(`css: ${stylesheets.length} stylesheet(s)`);
+  if (assetCount > 0) log.debug(`html assets: ${assetCount} rewritten from rootDir`);
 
   const durationMs = Date.now() - started;
   const fileCount = output.length + 1 + stylesheets.length + assetCount;
-  log.info(`build complete in ${durationMs}ms — ${fileCount} files in ${rel(paths.outDir)}${sep}`);
+  log.debug(`build complete in ${durationMs}ms — ${fileCount} files in ${rel(paths.outDir)}${sep}`);
 
   return { outDir: paths.outDir, entries, durationMs, fileCount };
 }

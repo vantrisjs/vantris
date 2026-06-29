@@ -36,19 +36,19 @@ export async function run(
   const [first, ...rest] = args.filter((arg) => !isGlobalFlag(arg));
 
   if (!first || first === "--help" || first === "-h" || first === "help") {
-    logger.info(helpText());
+    logger.info(helpText(logger));
     return ExitCode.Ok;
   }
 
   if (first === "--version" || first === "-v") {
-    logger.info(versionText());
+    logger.info(versionText(logger));
     return ExitCode.Ok;
   }
 
   const command = commands[first];
   if (!command) {
     logger.error(`Unknown command: "${first}"`);
-    logger.info(helpText());
+    logger.info(helpText(logger));
     return ExitCode.Error;
   }
 

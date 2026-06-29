@@ -24,6 +24,8 @@ export interface DevServerHandle {
   readonly url: string;
   readonly host: string;
   readonly port: number;
+  /** Time taken to start, in milliseconds. */
+  readonly startupMs: number;
   /** Pushes a full-page reload to every connected browser. */
   broadcastReload(): void;
   /** Stops the HTTP and WebSocket servers. */
@@ -48,6 +50,7 @@ export async function startDevServer(
 ): Promise<DevServerHandle> {
   const { ctx, entry } = options;
   const { paths, dev } = ctx.config;
+  const started = Date.now();
 
   const aliases: AliasUrl[] = ctx.resolver.aliases.map(({ find, replacement }) => ({
     find,
@@ -103,6 +106,7 @@ export async function startDevServer(
     url: localUrl(dev.host, port),
     host: dev.host,
     port,
+    startupMs: Date.now() - started,
     broadcastReload: () => reload.broadcastReload(),
     async close() {
       await reload.close();

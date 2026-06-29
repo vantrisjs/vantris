@@ -37,15 +37,26 @@ export async function cleanupProjects(): Promise<void> {
   );
 }
 
-/** A logger that records every message instead of printing. */
+/** A logger that records every message (tagged by level) instead of printing. */
 export function silentLogger(): CapturingLogger {
   const messages: string[] = [];
   return {
     messages,
     info: (m) => void messages.push(`info ${m}`),
+    success: (m) => void messages.push(`success ${m}`),
     warn: (m) => void messages.push(`warn ${m}`),
     error: (m) => void messages.push(`error ${m}`),
     debug: (m) => void messages.push(`debug ${m}`),
+    print: (m) => void messages.push(m),
+    link: (label, url) => `${label} (${url})`,
+    dim: (text) => text,
+    color: (text) => text,
+    box: (lines, opts) =>
+      void messages.push(`box ${opts?.title ? `[${opts.title}] ` : ""}${lines.join(" | ")}`),
+    table: (rows) =>
+      void messages.push(`table ${rows.map(([l, v]) => `${l}=${v}`).join(" ")}`),
+    separator: () => void messages.push("separator"),
+    title: (text) => void messages.push(`title ${text}`),
   };
 }
 

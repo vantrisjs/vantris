@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Local test project for developing Vantris",
   "scripts": {
-    "dev": "vantris dev",
+    "dev": "vantris dev --host 0.0.0.0",
     "build": "vantris build",
     "preview": "vantris preview",
     "helper": "vantris --help",

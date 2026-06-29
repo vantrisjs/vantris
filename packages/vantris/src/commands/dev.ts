@@ -7,6 +7,7 @@ import {
   prepareDirectories,
   waitForShutdown,
 } from "./support.js";
+import { printServerPanel } from "./ui.js";
 
 /** Coalesce a burst of filesystem events into a single reload. */
 const RELOAD_DEBOUNCE_MS = 50;
@@ -29,7 +30,13 @@ export const dev: Command = {
     const entry = await inspectProject(ctx);
 
     const server = await startDevServer({ ctx, entry });
-    ctx.logger.info(`ready — dev server running at ${server.url}`);
+    printServerPanel(ctx.logger, {
+      kind: "dev",
+      local: server.url,
+      network: null,
+      mode: ctx.mode,
+      startupMs: server.startupMs,
+    });
 
     let timer: NodeJS.Timeout | undefined;
     const watcher = createWatcher({

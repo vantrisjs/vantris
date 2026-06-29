@@ -10,6 +10,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 _Reserved for future versions. Planned: HMR and a plugin system (the resolver,
 env, config, and logger layers are already structured to host them)._
 
+## [0.7.0] - 2026-06-29
+
+A complete rewrite of the logger and CLI presentation — a modern, polished
+terminal experience with its own identity.
+
+### Added
+
+- **Proprietary logger** (`src/logger/`, dependency-free) — terminal capability
+  detection (colour level, OSC 8 hyperlinks, CI, TTY, Unicode), cached per
+  stream; an ANSI engine with 16/256/**truecolor**/hex and bold/dim/italic/
+  underline/strikethrough that **auto-downgrades** to the terminal's level.
+- **Smart links** — URLs (incl. localhost/IP) are auto-detected, coloured,
+  underlined, and made clickable (OSC 8) with a clean fallback; `logger.link()`
+  for manual links.
+- **Modern API** — `info`/`success`/`warn`/`error`/`debug` plus `link`/`dim`/
+  `color`/`box`/`table`/`separator`/`title`/`print`, with sober Unicode icons.
+- **Polished output** — boxed dev/preview start panels (local/network URLs,
+  mode, startup time, version), a build summary with per-file and **gzip**
+  sizes, and clean, hierarchical error blocks (red title, highlighted message,
+  no stack dump).
+- **Robust box engine** — a single central width measure (`logger/width.ts`)
+  using grapheme segmentation: ANSI/OSC 8 sequences and zero-width characters
+  are never counted, while emoji, CJK, and combining marks are sized correctly.
+  Every box line is guaranteed the same visual width, with correct titles
+  (fixed a top-border off-by-2), padding, alignment (left/center/right), fixed
+  or auto width, nesting, and border styles (round/sharp/double/thick/ascii).
+- **Levels** — `silent`/`error`/`warn`/`info`/`debug`; build/inspection
+  diagnostics moved to `debug` (shown with `--verbose`).
+
+### Changed
+
+- **Removed the `[vantris]` prefix** from every line — the product name now
+  appears only in banners, the version, and fatal errors.
+- **Tests** expanded to **130** (ANSI engine, capability detection, links,
+  formatting). No breaking changes to the public config or behaviour.
+
 ## [0.6.0] - 2026-06-29
 
 Internal refactor & quality pass — leaner, easier to maintain ahead of v1. No
@@ -238,7 +274,8 @@ transforms, HMR, plugins) are scaffolded as seams but not yet implemented.
 - **Build** — bundled with [tsup](https://tsup.egoist.dev/) to ESM with type
   declarations; type-checking via `tsc --noEmit`.
 
-[Unreleased]: https://github.com/vantrisjs/vantris/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/vantrisjs/vantris/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/vantrisjs/vantris/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/vantrisjs/vantris/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/vantrisjs/vantris/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/vantrisjs/vantris/compare/v0.3.0...v0.4.0
