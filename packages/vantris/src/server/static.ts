@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
-import { extname, join, resolve, sep } from "node:path";
+import { extname, join, resolve } from "node:path";
 import { isFile } from "../utils/fs.js";
+import { isWithin } from "../utils/paths.js";
 import { contentTypeFor } from "./mime.js";
 import { shouldTranspile, transpile } from "./transform.js";
 import { rewriteImports, type AliasUrl } from "./rewrite.js";
@@ -84,9 +85,7 @@ async function resolveConfined(
   relative: string,
 ): Promise<string | null> {
   const target = resolve(join(base, relative));
-  if (target !== confine && !target.startsWith(confine + sep)) {
-    return null;
-  }
+  if (!isWithin(confine, target)) return null;
 
   if (await isFile(target)) return target;
 

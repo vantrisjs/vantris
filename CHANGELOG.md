@@ -8,7 +8,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 _Reserved for future versions. Planned: HMR and a plugin system (the resolver,
-env, and config layers are already structured to host them)._
+env, config, and logger layers are already structured to host them)._
+
+## [0.6.0] - 2026-06-29
+
+Internal refactor & quality pass — leaner, easier to maintain ahead of v1. No
+breaking changes, no behaviour change.
+
+### Added
+
+- **`vantris/client` types** — ambient declarations for `import.meta.env` and
+  asset/CSS module imports. Reference once via `"types": ["vantris/client"]`
+  (or a triple-slash directive) — no hand-written `.d.ts` needed.
+
+### Changed
+
+- **Deduplicated path containment** — a single `isWithin(dir, target)` util
+  replaces five copies of the `startsWith(dir + sep)` traversal check (dev &
+  preview static serving, build HTML/CSS/outDir guards).
+- **Logger levels** — `createLogger` now takes a `level`
+  (`silent`/`error`/`warn`/`info`/`debug`); `verbose` maps to `debug`. Output is
+  filtered by severity, ready for finer-grained logging. Default behaviour is
+  unchanged.
+- **CSS performance** — `rootDir` is canonicalised (`realpath`) once per
+  stylesheet instead of once per `url()`, cutting redundant syscalls.
+
+### Internal
+
+- Audited the tree: no `any`, no plain `throw new Error` (all errors are
+  `VantrisError` subclasses), no unused imports/dependencies.
+- Tests expanded to **107** — added coverage for `isWithin`, the logger levels,
+  the dev import rewriter, the CLI router, and the error hierarchy.
 
 ## [0.5.0] - 2026-06-29
 
@@ -208,7 +238,8 @@ transforms, HMR, plugins) are scaffolded as seams but not yet implemented.
 - **Build** — bundled with [tsup](https://tsup.egoist.dev/) to ESM with type
   declarations; type-checking via `tsc --noEmit`.
 
-[Unreleased]: https://github.com/vantrisjs/vantris/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/vantrisjs/vantris/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/vantrisjs/vantris/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/vantrisjs/vantris/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/vantrisjs/vantris/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/vantrisjs/vantris/compare/v0.2.0...v0.3.0

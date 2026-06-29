@@ -1,8 +1,9 @@
 import { readFile } from "node:fs/promises";
-import { join, resolve, sep } from "node:path";
+import { join, resolve } from "node:path";
 import { HTML_ENTRY_FILENAME } from "../shared/constants.js";
 import { contentTypeFor } from "../server/mime.js";
 import { isFile } from "../utils/fs.js";
+import { isWithin } from "../utils/paths.js";
 
 /** A file read from the build output, ready to serve. */
 export interface OutputFile {
@@ -24,7 +25,7 @@ export function createOutputLoader(outDir: string) {
   return async function loadFile(pathname: string): Promise<OutputFile | null> {
     const relative = decodeURIComponent(pathname).replace(/^\/+/, "");
     const target = resolve(join(root, relative || HTML_ENTRY_FILENAME));
-    if (target !== root && !target.startsWith(root + sep)) return null;
+    if (!isWithin(root, target)) return null;
     if (!(await isFile(target))) return null;
 
     return { body: await readFile(target), contentType: contentTypeFor(target) };

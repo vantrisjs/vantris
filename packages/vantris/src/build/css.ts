@@ -1,10 +1,11 @@
 import { readFile, realpath } from "node:fs/promises";
-import { basename, dirname, extname, resolve, sep } from "node:path";
+import { basename, dirname, extname, resolve } from "node:path";
 import { bundleAsync } from "lightningcss";
 import type { Plugin } from "rolldown";
 import type { ResolvedPaths } from "../types/paths.js";
 import type { Resolver } from "../resolver/index.js";
 import { BuildError } from "../shared/errors.js";
+import { isWithin } from "../utils/paths.js";
 import { emitHashedAsset } from "./assets.js";
 
 const STYLE_RE = /\.(css|scss|sass|less)$/i;
@@ -148,11 +149,15 @@ export async function processStyle(
   }
 
   let css = result.code.toString();
+  // Canonicalise `rootDir` once (not per url()) — robust to symlinked roots.
+  const rootReal = await realpath(options.paths.rootDir).catch(
+    () => options.paths.rootDir,
+  );
   for (const dep of result.dependencies ?? []) {
     if (dep.type === "url") {
       // Resolve relative to the file the url() actually appears in.
       const fromDir = dirname(dep.loc.filePath);
-      const target = await resolveStyleUrl(dep.url, fromDir, options);
+      const target = await resolveStyleUrl(dep.url, fromDir, options, rootReal);
       if (target) {
         const fileName = await emitHashedAsset(
           options.outDir,
@@ -188,6 +193,7 @@ async function resolveStyleUrl(
   url: string,
   fromDir: string,
   options: StyleOptions,
+  rootReal: string,
 ): Promise<string | null> {
   if (/^(?:[a-z]+:)?\/\//i.test(url) || /^(?:data:|#)/i.test(url)) return null;
 
@@ -204,8 +210,7 @@ async function resolveStyleUrl(
 
   const real = await realpath(candidate).catch(() => null);
   if (!real) return null;
-  const root = await realpath(options.paths.rootDir).catch(() => options.paths.rootDir);
-  return real === root || real.startsWith(root + sep) ? real : null;
+  return isWithin(rootReal, real) ? real : null;
 }
 
 /** A tiny runtime snippet that injects a stylesheet `<link>` once. */

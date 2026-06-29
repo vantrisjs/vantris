@@ -1,6 +1,6 @@
 {
   "name": "vantris",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "A modern bundler for JavaScript/TypeScript",
   "type": "module",
   "license": "MIT",
@@ -27,12 +27,16 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./client": {
+      "types": "./client.d.ts"
+    },
     "./package.json": "./package.json"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "client.d.ts"
   ],
   "engines": {
     "node": ">=20.11.0"

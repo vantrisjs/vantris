@@ -1,8 +1,15 @@
 {
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
+    // App code is bundled by Vantris, so use bundler-style resolution
+    // (extensionless imports, alias `paths`, exports maps).
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["node"],
+    "types": ["node", "vantris/client"],
+    "paths": {
+      "@/*": ["./src/*"]
+    },
     "noEmit": true
   },
   "include": ["src", "vantris.config.ts"]

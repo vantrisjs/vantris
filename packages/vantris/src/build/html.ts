@@ -1,9 +1,9 @@
-import { resolve, sep } from "node:path";
-import { basename } from "node:path";
+import { basename, resolve } from "node:path";
 import type { HtmlEntry } from "../types/html.js";
 import type { ResolvedPaths } from "../types/paths.js";
 import type { Resolver } from "../resolver/index.js";
 import { BuildError } from "../shared/errors.js";
+import { isWithin } from "../utils/paths.js";
 
 /** A bundler entry derived from the HTML, plus how to rewrite the HTML. */
 export interface HtmlBuildEntry {
@@ -98,9 +98,7 @@ export function resolveSourceRef(
   // An alias (e.g. `@/logo.png`) resolves directly to a source file.
   const aliased = resolver?.alias(url);
   const file = aliased ?? resolve(paths.root, url.replace(/^\/+/, ""));
-  const withinRoot =
-    file === paths.rootDir || file.startsWith(paths.rootDir + sep);
-  return withinRoot ? file : null;
+  return isWithin(paths.rootDir, file) ? file : null;
 }
 
 /** Injects `<link rel="stylesheet">` tags into the document head. */

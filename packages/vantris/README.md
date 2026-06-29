@@ -140,6 +140,32 @@ import { thing } from "@/thing";
 .logo { background: url("@/logo.svg"); }
 ```
 
+## TypeScript
+
+Vantris ships ambient client types (`import.meta.env`, asset/CSS module
+imports). Reference them once — no hand-written `.d.ts` needed. The recommended
+`tsconfig.json` for app code:
+
+```jsonc
+{
+  "compilerOptions": {
+    // App code is bundled, so use bundler resolution.
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+
+    // Types for import.meta.env and asset/CSS imports.
+    "types": ["vantris/client"],
+
+    // Match your resolve.alias for editor/type support.
+    "paths": { "@/*": ["./src/*"] }
+  }
+}
+```
+
+`types: ["vantris/client"]` types `import.meta.env`; the `paths` entry mirrors
+your `resolve.alias` so the type-checker follows aliased imports. (You can also
+use `/// <reference types="vantris/client" />` instead of the `types` entry.)
+
 ## Requirements
 
 - Node.js >= 20.11

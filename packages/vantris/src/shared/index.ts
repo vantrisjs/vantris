@@ -10,7 +10,7 @@ export {
   CONFIG_FILENAMES,
 } from "./constants.js";
 export { createLogger } from "./logger.js";
-export type { LoggerOptions } from "./logger.js";
+export type { LoggerOptions, LogLevel } from "./logger.js";
 export { createContext } from "./context.js";
 export type { CreateContextOptions } from "./context.js";
 export { createWatcher } from "./watcher.js";

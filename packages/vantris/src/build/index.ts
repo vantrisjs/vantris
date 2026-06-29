@@ -5,6 +5,7 @@ import type { HtmlEntry } from "../types/html.js";
 import { HTML_ENTRY_FILENAME } from "../shared/constants.js";
 import { BuildError, HtmlEntryError } from "../shared/errors.js";
 import { isFile } from "../utils/fs.js";
+import { isWithin } from "../utils/paths.js";
 import { envDefine } from "../env/index.js";
 import { bundle, entryFileName } from "./bundle.js";
 import {
@@ -188,8 +189,7 @@ function assertSafeOutDir(
   publicDir: string,
 ): void {
   const clashes = outDir === root || outDir === rootDir || outDir === publicDir;
-  const isAncestorOfRoot = root === outDir || root.startsWith(outDir + sep);
-  if (clashes || isAncestorOfRoot) {
+  if (clashes || isWithin(outDir, root)) {
     throw new BuildError(
       `Refusing to clean outDir "${outDir}": it overlaps the project root or source directories.`,
     );
