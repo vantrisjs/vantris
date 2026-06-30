@@ -1,3 +1,8 @@
+import { dirname, extname, relative, resolve, sep } from "node:path";
+import { ASSET_EXTENSIONS } from "../shared/constants.js";
+
+const ASSET_EXTENSION_SET = new Set<string>(ASSET_EXTENSIONS);
+
 /** An alias mapped to the dev URL it should resolve to (e.g. `@` → `/src`). */
 export interface AliasUrl {
   find: string;
@@ -30,4 +35,45 @@ export function rewriteImports(
     }
     return match;
   });
+}
+
+/** Matches a default asset import: `import name from "./x.png"`. */
+const ASSET_IMPORT_RE =
+  /\bimport\s+(\w+)\s+from\s*(["'])([^"'`\n]+)\2;?/g;
+
+/**
+ * Inlines default asset imports as the dev URL the server serves the file from,
+ * so `import logo from "./logo.svg"` works in dev exactly as it does in the
+ * build (where it becomes a hashed URL). The browser cannot import an image as
+ * a module, so the import is replaced with a string constant.
+ *
+ * Specifiers are expected to be already alias-resolved (run after
+ * {@link rewriteImports}); root-relative URLs are kept, relative paths are
+ * resolved against the importer, and bare specifiers are left untouched.
+ *
+ * @example `import logo from "./logo.svg"` → `const logo = "/src/logo.svg";`
+ */
+export function inlineAssetImports(
+  code: string,
+  importerFile: string,
+  root: string,
+): string {
+  return code.replace(
+    ASSET_IMPORT_RE,
+    (match, id: string, _quote: string, spec: string) => {
+      const clean = spec.split(/[?#]/, 1)[0] ?? spec;
+      if (!ASSET_EXTENSION_SET.has(extname(clean).toLowerCase())) return match;
+
+      let url: string;
+      if (clean.startsWith("/")) {
+        url = clean; // already an absolute served URL (e.g. alias-resolved)
+      } else if (clean.startsWith(".")) {
+        const abs = resolve(dirname(importerFile), clean);
+        url = `/${relative(root, abs).split(sep).join("/")}`;
+      } else {
+        return match; // bare specifier — not an asset path
+      }
+      return `const ${id} = ${JSON.stringify(url)};`;
+    },
+  );
 }

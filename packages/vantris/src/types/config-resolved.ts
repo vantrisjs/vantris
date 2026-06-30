@@ -1,4 +1,9 @@
-import type { AssetFileNames, ChunkFileNames, Config } from "./config.js";
+import type {
+  AssetFileNames,
+  ChunkFileNames,
+  Config,
+  LibFormat,
+} from "./config.js";
 import type { ResolvedPaths } from "./paths.js";
 
 /** Dev-server options after defaults have been applied (no optionals). */
@@ -28,6 +33,18 @@ export interface ResolvedResolveConfig {
   readonly extensions: readonly string[];
 }
 
+/** Library-mode options after defaults/normalisation (entry made absolute). */
+export interface ResolvedLibConfig {
+  /** Absolute path of the entry module. */
+  readonly entry: string;
+  /** Global name for the `iife` format, or `null`. */
+  readonly name: string | null;
+  /** Formats to emit. */
+  readonly formats: readonly LibFormat[];
+  /** Output base name (no extension), or a function of the format. */
+  readonly fileName: string | ((format: LibFormat) => string);
+}
+
 /** Build options after defaults have been applied (no optionals). */
 export interface ResolvedBuildConfig {
   readonly minify: boolean;
@@ -36,6 +53,10 @@ export interface ResolvedBuildConfig {
   readonly entryFileNames: ChunkFileNames;
   readonly chunkFileNames: ChunkFileNames;
   readonly assetFileNames: AssetFileNames;
+  /** Whether to empty `outDir` before building. */
+  readonly emptyOutDir: boolean;
+  /** Library-mode options, or `null` for an HTML application build. */
+  readonly lib: ResolvedLibConfig | null;
 }
 
 /**
@@ -60,6 +81,13 @@ export interface ResolvedConfig {
   readonly preview: ResolvedPreviewConfig;
   /** Resolved module-resolution options. */
   readonly resolve: ResolvedResolveConfig;
+  /**
+   * Global constant replacements, pre-serialised to JSON literals (token →
+   * literal source) ready for the dev transpiler and the bundler.
+   */
+  readonly define: Readonly<Record<string, string>>;
+  /** Absolute path of the internal cache directory (`node_modules/.vantris`). */
+  readonly cacheDir: string;
   /** Absolute path of the config file that was loaded, if any. */
   readonly configFile: string | null;
 }

@@ -10,8 +10,8 @@ export interface WatchEvent {
 }
 
 export interface WatcherOptions {
-  /** Directory tree to watch (typically `rootDir`). */
-  dir: string;
+  /** Directory tree(s) or file(s) to watch (typically `rootDir`). */
+  dir: string | string[];
   logger: Logger;
   /** Called on every relevant filesystem change. */
   onChange: (event: WatchEvent) => void;

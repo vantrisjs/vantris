@@ -1,6 +1,6 @@
 {
   "name": "vantris",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "A modern bundler for JavaScript/TypeScript",
   "type": "module",
   "license": "MIT",

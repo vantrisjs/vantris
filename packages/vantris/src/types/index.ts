@@ -10,11 +10,15 @@ export type {
   AssetInfo,
   ChunkFileNames,
   AssetFileNames,
+  LibConfig,
+  LibFormat,
+  DefineValue,
 } from "./config.js";
 export type {
   ResolvedConfig,
   ResolvedDevConfig,
   ResolvedBuildConfig,
+  ResolvedLibConfig,
   ResolvedPreviewConfig,
   ResolvedResolveConfig,
   AliasEntry,

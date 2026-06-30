@@ -72,6 +72,18 @@ export function validateConfig(input: unknown): void {
     stringOrFn(build.entryFileNames, "build.entryFileNames");
     stringOrFn(build.chunkFileNames, "build.chunkFileNames");
     stringOrFn(build.assetFileNames, "build.assetFileNames");
+    boolean(build.emptyOutDir, "build.emptyOutDir");
+    validateLib(build.lib);
+  }
+
+  const define = object(config.define, "define");
+  if (define) {
+    for (const [key, value] of Object.entries(define)) {
+      const type = typeof value;
+      if (type !== "string" && type !== "number" && type !== "boolean") {
+        fail(`define.${key}`, value, "a string, number, or boolean");
+      }
+    }
   }
 
   const preview = object(config.preview, "preview");
@@ -90,4 +102,28 @@ export function validateConfig(input: unknown): void {
       }
     }
   }
+}
+
+const LIB_FORMATS = new Set(["esm", "cjs", "iife"]);
+
+/** Validates `build.lib`, when present. */
+function validateLib(value: unknown): void {
+  const lib = object(value, "build.lib");
+  if (!lib) return;
+
+  if (typeof lib.entry !== "string") {
+    fail("build.lib.entry", lib.entry, "a string");
+  }
+  string(lib.name, "build.lib.name");
+  if (lib.formats !== undefined) {
+    if (!Array.isArray(lib.formats)) {
+      fail("build.lib.formats", lib.formats, "an array");
+    }
+    lib.formats.forEach((format, index) => {
+      if (typeof format !== "string" || !LIB_FORMATS.has(format)) {
+        fail(`build.lib.formats[${index}]`, format, '"esm", "cjs", or "iife"');
+      }
+    });
+  }
+  stringOrFn(lib.fileName, "build.lib.fileName");
 }

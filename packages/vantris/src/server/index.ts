@@ -5,7 +5,8 @@ import type { H3Event } from "h3";
 import type { Context } from "../types/context.js";
 import type { HtmlEntry } from "../types/html.js";
 import { injectDevClient } from "../html/index.js";
-import { envDefine } from "../env/index.js";
+import { buildDefine } from "../env/index.js";
+import { cacheForContext } from "../cache/index.js";
 import { createReloadSocket, type ReloadSocket } from "./websocket.js";
 import { createStaticLoader } from "./static.js";
 import type { AliasUrl } from "./rewrite.js";
@@ -60,8 +61,9 @@ export async function startDevServer(
     root: paths.root,
     rootDir: paths.rootDir,
     publicDir: paths.publicDir,
-    define: envDefine(ctx.env, ctx.mode, ctx.config.base),
+    define: buildDefine(ctx.env, ctx.mode, ctx.config.base, ctx.config.define),
     aliases,
+    cache: cacheForContext(ctx),
   });
   const entryFile = entry?.file ?? null;
 

@@ -1,6 +1,33 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { HTML_ENTRY_FILENAME } from "../shared/constants.js";
+import { BuildError } from "../shared/errors.js";
+import { isWithin } from "../utils/paths.js";
+
+/** Paths needed to safely clean the output directory. */
+export interface OutDirGuard {
+  outDir: string;
+  root: string;
+  rootDir: string;
+  publicDir: string;
+}
+
+/**
+ * Guards against an `outDir` that would destroy the project — it must not be
+ * the root or a source directory, nor an ancestor of the root. The single
+ * place this safety rule lives.
+ *
+ * @throws {BuildError} when `outDir` overlaps the project root or sources.
+ */
+export function assertSafeOutDir(guard: OutDirGuard): void {
+  const { outDir, root, rootDir, publicDir } = guard;
+  const clashes = outDir === root || outDir === rootDir || outDir === publicDir;
+  if (clashes || isWithin(outDir, root)) {
+    throw new BuildError(
+      `Refusing to clean outDir "${outDir}": it overlaps the project root or source directories.`,
+    );
+  }
+}
 
 /**
  * Removes the output directory and recreates it empty.
@@ -11,6 +38,23 @@ import { HTML_ENTRY_FILENAME } from "../shared/constants.js";
 export async function cleanOutDir(outDir: string): Promise<void> {
   await rm(outDir, { recursive: true, force: true });
   await mkdir(outDir, { recursive: true });
+}
+
+/**
+ * Prepares the output directory for a build. When `empty` is `true` the
+ * directory is safely wiped (guarded by {@link assertSafeOutDir}); otherwise it
+ * is merely ensured to exist, so prior output is left in place.
+ */
+export async function prepareOutDir(
+  guard: OutDirGuard,
+  empty: boolean,
+): Promise<void> {
+  if (empty) {
+    assertSafeOutDir(guard);
+    await cleanOutDir(guard.outDir);
+  } else {
+    await mkdir(guard.outDir, { recursive: true });
+  }
 }
 
 /**

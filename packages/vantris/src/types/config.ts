@@ -64,6 +64,46 @@ export type ChunkFileNames = string | ((chunk: ChunkInfo) => string);
 /** An asset naming pattern, or a function returning one per asset. */
 export type AssetFileNames = string | ((asset: AssetInfo) => string);
 
+/** Output formats Vantris can emit in library mode. */
+export type LibFormat = "esm" | "cjs" | "iife";
+
+/**
+ * Library-mode build options.
+ *
+ * When `build.lib` is set, Vantris bundles a single entry module into one or
+ * more distribution formats (instead of building an HTML application). The
+ * shape is intentionally small and extensible — new formats can be added to
+ * {@link LibFormat} without an API change.
+ */
+export interface LibConfig {
+  /** Entry module to bundle. Relative to `root`, or absolute. */
+  entry: string;
+  /**
+   * Global variable name the library is exposed as. **Required** for the
+   * `iife` format (a browser global needs a name); ignored by `esm`/`cjs`.
+   */
+  name?: string;
+  /**
+   * Formats to emit, each producing its own file in a single build.
+   *
+   * @default ["esm", "cjs"]
+   */
+  formats?: LibFormat[];
+  /**
+   * Output file name (without extension), or a function of the format. The
+   * extension is derived per format (`.mjs`, `.cjs`, `.iife.js`).
+   *
+   * @default the entry file's base name
+   */
+  fileName?: string | ((format: LibFormat) => string);
+}
+
+/**
+ * A value usable in {@link Config.define}. Each value is serialised to a JSON
+ * literal and substituted verbatim into the code at dev and build time.
+ */
+export type DefineValue = string | number | boolean;
+
 /**
  * Production build options.
  *
@@ -123,6 +163,21 @@ export interface BuildConfig {
    * @default `${assetsDir}/[name]-[hash][extname]`
    */
   assetFileNames?: AssetFileNames;
+
+  /**
+   * Empty the output directory before building. The clean is guarded so it can
+   * never remove anything outside `outDir`.
+   *
+   * @default true
+   */
+  emptyOutDir?: boolean;
+
+  /**
+   * Build as a library instead of an HTML application. See {@link LibConfig}.
+   * When set, the HTML pipeline is skipped and the entry is emitted in each
+   * requested format.
+   */
+  lib?: LibConfig;
 
   // ───────────────────────────────────────────────────────────────────────
   // These map to the bundler's output options but are Vantris-owned and
@@ -243,6 +298,17 @@ export interface Config {
    * Module-resolution options (aliases, …). See {@link ResolveConfig}.
    */
   resolve?: ResolveConfig;
+
+  /**
+   * Global constant replacements. Each key is replaced — verbatim, as a JSON
+   * literal — wherever it appears in your code, in both development and build.
+   *
+   * Use it for compile-time flags and metadata that should be inlined (and
+   * tree-shaken) rather than read at runtime.
+   *
+   * @example { __DEV__: true, __APP_VERSION__: "1.0.0" }
+   */
+  define?: Record<string, DefineValue>;
 
   // ───────────────────────────────────────────────────────────────────────
   // Reserved for future versions. Declared here as a contract so consumers

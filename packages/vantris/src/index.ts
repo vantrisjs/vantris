@@ -44,6 +44,10 @@ export type {
   PreviewServerHandle,
 } from "./preview/index.js";
 
+// Internal cache
+export { createCache, cacheForContext, cacheKey } from "./cache/index.js";
+export type { Cache, CacheOptions } from "./cache/index.js";
+
 // Context & services
 export { createContext, createLogger, createWatcher } from "./shared/index.js";
 export type { Watcher, WatcherOptions, WatchEvent } from "./shared/index.js";
@@ -76,9 +80,13 @@ export type {
   AssetInfo,
   ChunkFileNames,
   AssetFileNames,
+  LibConfig,
+  LibFormat,
+  DefineValue,
   ResolvedConfig,
   ResolvedDevConfig,
   ResolvedBuildConfig,
+  ResolvedLibConfig,
   ResolvedPreviewConfig,
   ResolvedResolveConfig,
   AliasEntry,

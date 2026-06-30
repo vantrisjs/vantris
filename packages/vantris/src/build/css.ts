@@ -1,12 +1,12 @@
-import { readFile, realpath } from "node:fs/promises";
-import { basename, dirname, extname, resolve } from "node:path";
+import { mkdir, readFile, realpath, writeFile } from "node:fs/promises";
+import { basename, dirname, extname, join, resolve } from "node:path";
 import { bundleAsync } from "lightningcss";
 import type { Plugin } from "rolldown";
 import type { ResolvedPaths } from "../types/paths.js";
 import type { Resolver } from "../resolver/index.js";
 import { BuildError } from "../shared/errors.js";
 import { isWithin } from "../utils/paths.js";
-import { emitHashedAsset } from "./assets.js";
+import { contentHash, emitHashedAsset } from "./assets.js";
 
 const STYLE_RE = /\.(css|scss|sass|less)$/i;
 const MODULE_RE = /\.module\.[^.]+$/i;
@@ -35,6 +35,8 @@ export interface StyleOptions {
   assetsDir: string;
   base: string;
   minify: boolean;
+  /** Source-map strategy (mirrors `build.sourcemap`). @default false */
+  sourcemap?: boolean | "inline" | "hidden";
   /** PostCSS runner, when the project has a PostCSS config. */
   postcss?: PostcssRunner | null;
   /** Central resolver, for aliases in `@import` and `url()`. */
@@ -75,6 +77,8 @@ export async function loadPostcss(root: string): Promise<PostcssRunner | null> {
 export interface ProcessedStyle {
   /** Final CSS (preprocessed, transformed, url()s rewritten, minified). */
   css: string;
+  /** Source map (JSON string) when source maps are enabled, else `null`. */
+  map: string | null;
   /** CSS-module class map (`original → scoped`), when the file is a module. */
   exports?: Record<string, string>;
 }
@@ -129,6 +133,7 @@ export async function processStyle(
     result = await bundleAsync({
       filename: clean,
       minify: options.minify,
+      sourceMap: Boolean(options.sourcemap),
       analyzeDependencies: true,
       cssModules: isCssModule(clean),
       resolver: {
@@ -149,6 +154,7 @@ export async function processStyle(
   }
 
   let css = result.code.toString();
+  const map = result.map ? result.map.toString() : null;
   // Canonicalise `rootDir` once (not per url()) — robust to symlinked roots.
   const rootReal = await realpath(options.paths.rootDir).catch(
     () => options.paths.rootDir,
@@ -181,7 +187,44 @@ export async function processStyle(
       )
     : undefined;
 
-  return exports ? { css, exports } : { css };
+  return exports ? { css, map, exports } : { css, map };
+}
+
+/**
+ * Emits a stylesheet (and its source map, per the configured strategy) into the
+ * output directory, returning the hashed file name relative to `outDir`.
+ *
+ * The four strategies match `build.sourcemap`:
+ * - `false` — CSS only.
+ * - `true` — external `.css.map` + a `sourceMappingURL` comment.
+ * - `"inline"` — the map appended as a base64 data-URL comment.
+ * - `"hidden"` — external `.css.map`, no comment.
+ */
+export async function emitStyle(
+  options: Pick<StyleOptions, "outDir" | "assetsDir" | "sourcemap">,
+  sourceName: string,
+  css: string,
+  map: string | null,
+): Promise<string> {
+  const base = basename(sourceName, extname(sourceName)) || "style";
+  const fileName = `${options.assetsDir}/${base}-${contentHash(css)}.css`;
+  const sm = options.sourcemap;
+
+  let output = css;
+  if (map && sm === "inline") {
+    const data = Buffer.from(map).toString("base64");
+    output += `\n/*# sourceMappingURL=data:application/json;base64,${data} */`;
+  } else if (map && sm === true) {
+    output += `\n/*# sourceMappingURL=${basename(fileName)}.map */`;
+  }
+
+  const target = join(options.outDir, fileName);
+  await mkdir(dirname(target), { recursive: true });
+  await writeFile(target, output);
+  if (map && (sm === true || sm === "hidden")) {
+    await writeFile(`${target}.map`, map);
+  }
+  return fileName;
 }
 
 /**
@@ -236,6 +279,7 @@ export function cssPlugin(
   cssByEntry: Map<string, string>,
 ): Plugin {
   const cssByModule = new Map<string, string>();
+  const mapByModule = new Map<string, string | null>();
 
   return {
     name: "vantris:css",
@@ -243,8 +287,9 @@ export function cssPlugin(
       const file = stripQuery(id);
       if (!isStyle(file)) return null;
 
-      const { css, exports } = await processStyle(file, options);
+      const { css, map, exports } = await processStyle(file, options);
       cssByModule.set(id, css);
+      mapByModule.set(id, map);
 
       const code = exports
         ? `export default ${JSON.stringify(exports)};`
@@ -256,18 +301,17 @@ export function cssPlugin(
         const chunk = bundle[fileName];
         if (!chunk || chunk.type !== "chunk") continue;
 
-        const css = chunk.moduleIds
-          .filter((moduleId) => cssByModule.has(moduleId))
-          .map((moduleId) => cssByModule.get(moduleId)!)
-          .join("\n");
-        if (!css) continue;
+        const cssModules = chunk.moduleIds.filter((id) => cssByModule.has(id));
+        if (cssModules.length === 0) continue;
 
-        const cssFile = await emitHashedAsset(
-          options.outDir,
-          options.assetsDir,
-          `${chunk.name}.css`,
-          css,
-        );
+        const css = cssModules.map((id) => cssByModule.get(id)!).join("\n");
+        // A combined source map is only emitted when a single stylesheet feeds
+        // the chunk (the common case); concatenated sheets ship without one
+        // rather than a misaligned map.
+        const map =
+          cssModules.length === 1 ? mapByModule.get(cssModules[0]!) ?? null : null;
+
+        const cssFile = await emitStyle(options, `${chunk.name}.css`, css, map);
 
         if (chunk.isEntry) {
           cssByEntry.set(chunk.name, cssFile);

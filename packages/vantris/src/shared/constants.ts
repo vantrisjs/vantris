@@ -2,7 +2,7 @@
 export const APP_NAME = "vantris";
 
 /** Current Vantris version. Kept in sync with package.json at release time. */
-export const VERSION = "0.7.0";
+export const VERSION = "0.8.0";
 
 /** The HTML entry filename Vantris looks for at the project root. */
 export const HTML_ENTRY_FILENAME = "index.html";
@@ -26,7 +26,18 @@ export const BUILD_DEFAULTS = {
   minify: true,
   sourcemap: false,
   assetsDir: "assets",
+  emptyOutDir: true,
 } as const;
+
+/** Default formats emitted in library mode. */
+export const LIB_DEFAULT_FORMATS = ["esm", "cjs"] as const;
+
+/**
+ * Internal cache directory, relative to the project root. Lives inside
+ * `node_modules` so it is git-ignored by convention and never pollutes the
+ * project root.
+ */
+export const CACHE_DIRNAME = "node_modules/.vantris";
 
 /** Default preview-server options. */
 export const PREVIEW_DEFAULTS = {
@@ -58,6 +69,8 @@ export const ASSET_EXTENSIONS = [
   ".woff", ".woff2", ".ttf", ".otf", ".eot",
   // media
   ".mp4", ".webm", ".ogg", ".mp3", ".wav", ".flac", ".aac",
+  // data / misc
+  ".txt", ".wasm",
 ] as const;
 
 /**

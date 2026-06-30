@@ -1,17 +1,21 @@
-import type { Config } from "../types/config.js";
+import { basename } from "node:path";
+import type { Config, DefineValue, LibConfig } from "../types/config.js";
 import type {
   AliasEntry,
   ResolvedBuildConfig,
   ResolvedConfig,
   ResolvedDevConfig,
+  ResolvedLibConfig,
   ResolvedPreviewConfig,
   ResolvedResolveConfig,
 } from "../types/config-resolved.js";
 import type { ResolvedPaths } from "../types/paths.js";
 import {
   BUILD_DEFAULTS,
+  CACHE_DIRNAME,
   DEFAULTS,
   DEV_DEFAULTS,
+  LIB_DEFAULT_FORMATS,
   PREVIEW_DEFAULTS,
   RESOLVE_EXTENSIONS,
 } from "../shared/constants.js";
@@ -57,6 +61,8 @@ export function resolveConfig(
     chunkFileNames: raw.build?.chunkFileNames ?? `${assetsDir}/[name]-[hash].js`,
     assetFileNames:
       raw.build?.assetFileNames ?? `${assetsDir}/[name]-[hash][extname]`,
+    emptyOutDir: raw.build?.emptyOutDir ?? BUILD_DEFAULTS.emptyOutDir,
+    lib: resolveLib(raw.build?.lib, root),
   };
 
   const preview: ResolvedPreviewConfig = {
@@ -77,7 +83,46 @@ export function resolveConfig(
     extensions: RESOLVE_EXTENSIONS,
   };
 
-  return { raw, paths, base, dev, build, preview, resolve, configFile };
+  const define = resolveDefine(raw.define);
+  const cacheDir = resolveFrom(root, CACHE_DIRNAME);
+
+  return {
+    raw,
+    paths,
+    base,
+    dev,
+    build,
+    preview,
+    resolve,
+    define,
+    cacheDir,
+    configFile,
+  };
+}
+
+/** Serialises each {@link DefineValue} to a JSON literal for static replacement. */
+function resolveDefine(
+  define: Record<string, DefineValue> | undefined,
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(define ?? {})) {
+    out[key] = JSON.stringify(value);
+  }
+  return out;
+}
+
+/** Normalises library-mode options, making the entry absolute. */
+function resolveLib(
+  lib: LibConfig | undefined,
+  root: string,
+): ResolvedLibConfig | null {
+  if (!lib) return null;
+  return {
+    entry: resolveFrom(root, lib.entry),
+    name: lib.name ?? null,
+    formats: lib.formats ?? LIB_DEFAULT_FORMATS,
+    fileName: lib.fileName ?? basename(lib.entry).replace(/\.[^.]+$/, ""),
+  };
 }
 
 /** Ensures the base path starts and ends with `/` (leaving absolute URLs intact). */

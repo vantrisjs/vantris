@@ -11,11 +11,11 @@ import type {
   RolldownOutput,
 } from "rolldown";
 import type { ResolvedConfig } from "../types/config-resolved.js";
-import type { AssetFileNames, ChunkFileNames } from "../types/config.js";
+import type { AssetFileNames, ChunkFileNames, LibFormat } from "../types/config.js";
 import type { Resolver } from "../resolver/index.js";
 import { ASSET_EXTENSIONS } from "../shared/constants.js";
 import { BuildError } from "../shared/errors.js";
-import { cssPlugin, type PostcssRunner } from "./css.js";
+import { cssPlugin, type PostcssRunner, type StyleOptions } from "./css.js";
 
 const ASSET_EXTENSION_SET = new Set<string>(ASSET_EXTENSIONS);
 
@@ -57,15 +57,7 @@ export async function bundle(input: BundleInput): Promise<BundleResult> {
   const { paths, build } = config;
 
   const cssByEntry = new Map<string, string>();
-  const styleOptions = {
-    paths,
-    outDir: paths.outDir,
-    assetsDir: build.assetsDir,
-    base: config.base,
-    minify: build.minify,
-    postcss: input.postcss ?? null,
-    resolver: input.resolver,
-  };
+  const styleOptions = styleOptionsFrom(config, input.resolver, input.postcss);
   const inputOptions: InputOptions = {
     input: entries,
     cwd: paths.root,
@@ -114,6 +106,130 @@ export async function bundle(input: BundleInput): Promise<BundleResult> {
   }
 
   return { output: result.output, cssByEntry };
+}
+
+/** Builds the shared style-pipeline options from the resolved config. */
+function styleOptionsFrom(
+  config: ResolvedConfig,
+  resolver: Resolver,
+  postcss?: PostcssRunner | null,
+): StyleOptions {
+  const { paths, build } = config;
+  return {
+    paths,
+    outDir: paths.outDir,
+    assetsDir: build.assetsDir,
+    base: config.base,
+    minify: build.minify,
+    sourcemap: build.sourcemap,
+    postcss: postcss ?? null,
+    resolver,
+  };
+}
+
+/** Maps each library format to its Rolldown format and output extension. */
+const FORMAT_META: Record<
+  LibFormat,
+  { format: "es" | "cjs" | "iife"; ext: string }
+> = {
+  esm: { format: "es", ext: ".mjs" },
+  cjs: { format: "cjs", ext: ".cjs" },
+  iife: { format: "iife", ext: ".iife.js" },
+};
+
+/** Input for a library build. */
+export interface LibBundleInput {
+  config: ResolvedConfig;
+  resolver: Resolver;
+  define: Record<string, string>;
+  postcss?: PostcssRunner | null;
+}
+
+/** A single emitted library file. */
+export interface LibFile {
+  fileName: string;
+  format: LibFormat;
+}
+
+export interface LibBundleResult {
+  files: LibFile[];
+}
+
+/**
+ * Bundles a single entry into every requested format in one pass.
+ *
+ * The module graph is built once and written once per format, so emitting
+ * `esm` + `cjs` + `iife` costs barely more than a single format. New formats
+ * are added by extending {@link FORMAT_META} — no caller changes required.
+ *
+ * @throws {BuildError} when `iife` is requested without a `name`, or bundling fails.
+ */
+export async function bundleLibrary(
+  input: LibBundleInput,
+): Promise<LibBundleResult> {
+  const { config } = input;
+  const { paths, build } = config;
+  const lib = build.lib!;
+
+  if (lib.formats.includes("iife") && !lib.name) {
+    throw new BuildError(
+      'build.lib.name is required to emit the "iife" format (the browser global needs a name).',
+    );
+  }
+
+  const nameFor = (format: LibFormat): string =>
+    typeof lib.fileName === "function" ? lib.fileName(format) : lib.fileName;
+
+  const cssByEntry = new Map<string, string>();
+  const styleOptions = styleOptionsFrom(config, input.resolver, input.postcss);
+  const inputOptions: InputOptions = {
+    input: { index: lib.entry },
+    cwd: paths.root,
+    // A distributable library should not assume a host platform.
+    platform: "neutral",
+    transform: { define: input.define },
+    plugins: [
+      aliasPlugin(input.resolver),
+      assetUrlPlugin(config.base),
+      cssPlugin(styleOptions, cssByEntry),
+    ],
+  };
+
+  const files: LibFile[] = [];
+  try {
+    const bundler = await rolldown(inputOptions);
+    try {
+      for (const format of lib.formats) {
+        const meta = FORMAT_META[format];
+        const base = nameFor(format);
+        const result = await bundler.write({
+          dir: paths.outDir,
+          format: meta.format,
+          ...(lib.name ? { name: lib.name } : {}),
+          minify: build.minify,
+          sourcemap: build.sourcemap,
+          entryFileNames: `${base}${meta.ext}`,
+          chunkFileNames: `${base}-[name]-[hash]${meta.ext}`,
+          assetFileNames: toAssetNames(build.assetFileNames),
+        });
+        for (const item of result.output) {
+          if (item.type === "chunk" && item.isEntry) {
+            files.push({ fileName: item.fileName, format });
+          }
+        }
+      }
+    } finally {
+      await bundler.close();
+    }
+  } catch (cause) {
+    if (cause instanceof BuildError) throw cause;
+    throw new BuildError(
+      `Library bundling failed: ${cause instanceof Error ? cause.message : String(cause)}`,
+      { cause },
+    );
+  }
+
+  return { files };
 }
 
 /**

@@ -56,13 +56,17 @@ Add scripts to your `package.json`:
 
 - **Dev** — H3 server, on-the-fly TypeScript (esbuild), full-page live reload.
 - **Build** — Rolldown bundling: tree shaking, minification, code splitting,
-  content-hashed output.
+  content-hashed output, source maps, and `build --watch`.
+- **Library mode** — bundle one entry to `esm` + `cjs` + `iife` in one build.
 - **CSS** — `url()` rewriting, `@import` inlining, CSS Modules, Sass/Less,
   PostCSS, CSS code splitting (via lightningcss).
-- **Assets** — JS-imported and `src/`-referenced HTML assets are hashed and
-  rewritten; `public/` is copied verbatim.
+- **Assets** — images, fonts, media, `wasm`, `txt`, and `json`; hashed and
+  rewritten, consistent in dev and build. `public/` is copied verbatim.
+- **`define`** — inline global constants in dev and build.
 - **Env & modes** — `.env` files per mode, `import.meta.env`, `--mode`.
-- **Aliases** — one resolver, applied in dev, build, HTML, and CSS.
+- **Aliases** — one resolver for dev/build/HTML/CSS, with `tsconfig.json`
+  fallback.
+- **Cache** — transparent, self-invalidating, in `node_modules/.vantris/`.
 
 ## Configuration
 
@@ -80,13 +84,19 @@ export default defineConfig({
 
   dev: { port: 3000, host: "localhost" },
 
+  // Inlined in dev and build (string | number | boolean)
+  define: { __DEV__: true, __APP_VERSION__: "1.0.0" },
+
   build: {
     minify: true,
-    sourcemap: false, // or true | "inline" | "hidden"
+    sourcemap: false,   // or true | "inline" | "hidden"  (JS, TS, and CSS)
+    emptyOutDir: true,  // empty outDir before building (guarded)
     assetsDir: "assets",
     entryFileNames: "assets/[name]-[hash].js",
     chunkFileNames: "assets/[name]-[hash].js",
     assetFileNames: "assets/[name]-[hash][extname]",
+    // Library mode — bundle one entry to several formats:
+    // lib: { entry: "./src/index.ts", name: "MyLib", formats: ["esm", "cjs", "iife"] },
   },
 
   preview: { port: 4173, host: "localhost", open: false },
@@ -100,6 +110,25 @@ export default defineConfig({
 Output-naming options accept a string pattern **or** a function. The config is
 validated on load — an invalid value fails with the property path, expected
 type, and received value.
+
+### Library mode
+
+```ts
+export default defineConfig({
+  build: {
+    lib: { entry: "./src/index.ts", name: "MyLib", formats: ["esm", "cjs", "iife"] },
+  },
+});
+```
+
+Emits `index.mjs` (esm), `index.cjs` (cjs), and `index.iife.js` (iife — needs
+`name`) in one build. Defaults to `["esm", "cjs"]`; `fileName` defaults to the
+entry's base name. The HTML pipeline is skipped.
+
+### `vantris build --watch`
+
+Rebuilds on every change without starting a dev server — debounced, and a
+failed build never stops the watcher.
 
 ## Modes & environment variables
 
@@ -139,6 +168,11 @@ import { thing } from "@/thing";
 @import "@/styles/base.css";
 .logo { background: url("@/logo.svg"); }
 ```
+
+If you don't set `resolve.alias`, Vantris reads `compilerOptions.paths` and
+`baseUrl` from your `tsconfig.json` (following `extends`), so a single source of
+truth drives both the type-checker and the bundler. An explicit `resolve.alias`
+always wins.
 
 ## TypeScript
 

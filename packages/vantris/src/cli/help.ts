@@ -25,6 +25,7 @@ export function helpText(logger: Logger): string {
     "",
     logger.dim("Options:"),
     `  ${"--mode <mode>".padEnd(15)} ${logger.dim("Set the mode (development, production, …)")}`,
+    `  ${"-w, --watch".padEnd(15)} ${logger.dim("Rebuild on changes (build)")}`,
     `  ${"-h, --help".padEnd(15)} ${logger.dim("Show this help")}`,
     `  ${"-v, --version".padEnd(15)} ${logger.dim("Show the version number")}`,
     `  ${"--verbose".padEnd(15)} ${logger.dim("Verbose logging")}`,

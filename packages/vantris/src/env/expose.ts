@@ -49,3 +49,19 @@ export function envDefine(
   }
   return define;
 }
+
+/**
+ * Builds the complete `define` map used by both the dev transpiler and the
+ * bundler: the `import.meta.env` replacements merged with the user's global
+ * constants (`config.define`, already serialised to JSON literals). User keys
+ * win on collision. One function so dev and build never diverge.
+ */
+export function buildDefine(
+  env: Record<string, string>,
+  mode: string,
+  base: string,
+  userDefine: Readonly<Record<string, string>> = {},
+  prefix: string = ENV_PREFIX,
+): Record<string, string> {
+  return { ...envDefine(env, mode, base, prefix), ...userDefine };
+}

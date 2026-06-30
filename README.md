@@ -13,13 +13,19 @@ you configure Vantris, never them.
 - ⚡ **Dev server** — H3 server, on-the-fly TypeScript via esbuild, full-page
   live reload over WebSocket.
 - 📦 **Production build** — Rolldown bundling: tree shaking, minification, code
-  splitting, content-hashed output.
+  splitting, content-hashed output, with `build --watch`.
+- 📚 **Library mode** — bundle one entry to `esm` + `cjs` + `iife` in a single
+  build.
+- 🗺️ **Source maps** — for JS, TS, and CSS (`true` / `"inline"` / `"hidden"`).
 - 🎨 **Full CSS pipeline** — `url()` rewriting, `@import` inlining, CSS Modules,
   Sass/Less, PostCSS, and CSS code splitting.
-- 🖼️ **Asset handling** — JS-imported assets and `src/`-referenced HTML assets
-  are hashed and rewritten; `public/` is copied verbatim.
+- 🖼️ **Asset handling** — images, fonts, media, `wasm`, `txt`, and `json`;
+  consistent in dev and build. `public/` is copied verbatim.
+- 🔧 **`define`** — inline global constants in dev and build.
+- 🧭 **Zero-config aliases** — falls back to `tsconfig.json` `paths`/`baseUrl`.
+- ⚙️ **Internal cache** — transparent, self-invalidating, in `node_modules/`.
 - 👀 **Preview server** — serve the real production output locally.
-- 🧪 **Well tested & strict** — 60+ Vitest tests, TypeScript strict everywhere.
+- 🧪 **Well tested & strict** — 200+ Vitest tests, TypeScript strict everywhere.
 
 ## Getting started
 
@@ -55,14 +61,15 @@ vantris preview   # serve dist/ (http://localhost:4173)
 
 ## CLI
 
-| Command           | Description                                         |
-| ----------------- | --------------------------------------------------- |
-| `vantris dev`     | Start the development server with live reload.      |
-| `vantris build`   | Produce an optimised production build in `outDir`.  |
-| `vantris preview` | Serve the built `outDir` locally (no compilation).  |
+| Command                 | Description                                         |
+| ----------------------- | --------------------------------------------------- |
+| `vantris dev`           | Start the development server with live reload.      |
+| `vantris build`         | Produce an optimised production build in `outDir`.  |
+| `vantris build --watch` | Rebuild on every change (no dev server).            |
+| `vantris preview`       | Serve the built `outDir` locally (no compilation).  |
 
-Global flags: `--mode <mode>`, `--help` / `-h`, `--version` / `-v`,
-`--verbose` / `--debug`.
+Global flags: `--mode <mode>`, `--watch` / `-w` (build), `--help` / `-h`,
+`--version` / `-v`, `--verbose` / `--debug`.
 
 The CLI only parses arguments and routes to a command — all behaviour lives in
 the command modules.
@@ -132,14 +139,22 @@ export default defineConfig({
     host: "localhost",
   },
 
+  // Global constant replacements (inlined in dev and build)
+  define: {
+    __DEV__: true,
+    __APP_VERSION__: "1.0.0",
+  },
+
   // Production build
   build: {
     minify: true,            // or false
     sourcemap: false,        // or true | "inline" | "hidden"
+    emptyOutDir: true,       // empty outDir before building (safely)
     assetsDir: "assets",     // drives the default *FileNames below
     entryFileNames: "assets/[name]-[hash].js",
     chunkFileNames: "assets/[name]-[hash].js",
     assetFileNames: "assets/[name]-[hash][extname]",
+    // lib: { ... }          // build a library instead of an app (see below)
   },
 
   // Preview server
@@ -158,6 +173,11 @@ export default defineConfig({
   },
 });
 ```
+
+When `resolve.alias` is **omitted**, Vantris falls back to your
+`tsconfig.json` — `compilerOptions.paths` (resolved against `baseUrl`) become
+your aliases, so `"@/*": ["./src/*"]` works with zero extra config. An explicit
+`resolve.alias` always takes precedence.
 
 The config is validated on load: an invalid value fails fast with the property
 path, the expected type, and the value received.
@@ -207,6 +227,79 @@ What gets processed (Vite-style):
 
 Sass/Less are optional peer dependencies — install the one you use
 (`pnpm add -D sass`).
+
+**Assets.** Images (`png`, `jpg`, `gif`, `svg`, `webp`, `avif`, `ico`, `bmp`),
+fonts (`woff`, `woff2`, `ttf`, `otf`, `eot`), media (`mp4`, `webm`, `mp3`,
+`wav`, …), plus `wasm` and `txt` resolve to hashed URLs when imported, while
+`json` is imported as data. They behave identically in dev and build.
+
+**Source maps.** `build.sourcemap` covers JavaScript, TypeScript, and CSS:
+
+| value        | result                                              |
+| ------------ | --------------------------------------------------- |
+| `false`      | no maps (default)                                   |
+| `true`       | external `.map` files + a `sourceMappingURL` comment |
+| `"inline"`   | map embedded as a base64 data URL                   |
+| `"hidden"`   | external `.map` files, no comment                   |
+
+**Watch.** `vantris build --watch` (or `-w`) rebuilds on every change. It does
+**not** start a dev server — it only rebuilds, debounced, and a failed build
+never stops the watcher.
+
+```bash
+vantris build --watch
+```
+
+**`base`** is applied consistently across HTML, CSS `url()`, injected
+stylesheets, and JS-imported assets. Dynamic-import chunks stay relative, so
+they resolve correctly under any base.
+
+### Library mode (`build.lib`)
+
+Bundle a single entry into multiple distribution formats in one build:
+
+```ts
+export default defineConfig({
+  build: {
+    lib: {
+      entry: "./src/index.ts",
+      name: "MyLibrary",          // required for the "iife" global
+      formats: ["esm", "cjs", "iife"], // default: ["esm", "cjs"]
+      // fileName: "my-library",   // default: the entry's base name
+    },
+  },
+});
+```
+
+Each format is emitted with its own extension — `.mjs` (esm), `.cjs` (cjs),
+`.iife.js` (iife) — and the HTML pipeline is skipped. The module graph is built
+once and written once per format.
+
+### Global constants (`define`)
+
+`define` replaces identifiers with a JSON literal everywhere they appear, in
+both dev and build, so flags and metadata are inlined (and dead branches
+tree-shaken):
+
+```ts
+export default defineConfig({
+  define: { __DEV__: false, __APP_VERSION__: "1.0.0" },
+});
+```
+
+```ts
+if (__DEV__) console.log("dev only"); // dropped in production
+console.log(__APP_VERSION__);          // → console.log("1.0.0")
+```
+
+Values are `string`, `number`, or `boolean`.
+
+### Internal cache
+
+Vantris keeps a transparent, self-invalidating cache in
+`node_modules/.vantris/` — transpiled dev modules (content-addressed) and build
+metadata. It is wiped automatically when the Vantris version or your config
+changes, and never touches the project root. No configuration needed.
 
 ## Preview (`vantris preview`)
 

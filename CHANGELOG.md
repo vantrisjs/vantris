@@ -8,7 +8,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 _Reserved for future versions. Planned: HMR and a plugin system (the resolver,
-env, config, and logger layers are already structured to host them)._
+env, config, cache, and logger layers are already structured to host them)._
+
+## [0.8.0] - 2026-06-30
+
+Completes the bundler core ahead of stabilisation — library output, source
+maps, global constants, and a persistent cache, with no breaking changes.
+
+### Added
+
+- **Library mode** (`build.lib`) — bundle one entry into `esm`, `cjs`, and
+  `iife` in a single build (`.mjs` / `.cjs` / `.iife.js`); the graph is built
+  once and written once per format. `name` (iife global), `formats` (default
+  `["esm", "cjs"]`), and `fileName` are configurable; the HTML pipeline is
+  skipped.
+- **Complete source maps** for JavaScript, TypeScript, **and CSS** —
+  `build.sourcemap` honours `false` / `true` / `"inline"` / `"hidden"`
+  consistently (lightningcss-generated CSS maps included).
+- **Global constants** (`define`) — `string`/`number`/`boolean` values inlined
+  as JSON literals in **both** dev and build (merged with `import.meta.env`).
+- **`build.emptyOutDir`** (default `true`) — empties `outDir` before building,
+  guarded so nothing outside `outDir` is ever removed.
+- **`vantris build --watch`** (`-w`) — rebuilds on change without starting a dev
+  server; debounced, and a failed build never stops the watcher.
+- **Persistent cache** in `node_modules/.vantris/` — transparent and
+  self-invalidating (a version/config-fingerprint manifest wipes it on change).
+  Backs a content-addressed dev transpile cache and build metadata; never
+  pollutes the project root.
+- **Zero-config aliases from `tsconfig.json`** — when `resolve.alias` is unset,
+  `compilerOptions.paths` + `baseUrl` (following `extends`, JSONC-aware) become
+  the project aliases. Explicit config always wins.
+- **Broader asset support** — `wasm` and `txt` join images, fonts, and media as
+  hashed-URL imports; the dev MIME map covers all of them (`json` is imported as
+  data). Asset imports now behave **identically in dev and build**.
+- **Richer build summary** — per-file size with gzip **and brotli**, plus
+  totals (file/chunk/asset counts, combined sizes, duration).
+
+### Changed
+
+- The dev server now serves JS-imported assets correctly (asset imports are
+  inlined to their dev URL), matching build behaviour.
+- `base` is verified across HTML, CSS `url()`, injected stylesheets, and
+  JS-imported assets; dynamic-import chunks stay relative (base-agnostic).
+- **Tests** expanded to **200+** (library mode, source maps, `define`,
+  `emptyOutDir`, cache, tsconfig aliases, assets, `base`, watch), including
+  regression coverage.
+
+### Fixed
+
+- JSONC parsing of `tsconfig.json` no longer mistakes `/*` inside a string
+  (e.g. the `"@/*"` path key) for a comment.
 
 ## [0.7.0] - 2026-06-29
 
@@ -274,7 +323,8 @@ transforms, HMR, plugins) are scaffolded as seams but not yet implemented.
 - **Build** — bundled with [tsup](https://tsup.egoist.dev/) to ESM with type
   declarations; type-checking via `tsc --noEmit`.
 
-[Unreleased]: https://github.com/vantrisjs/vantris/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/vantrisjs/vantris/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/vantrisjs/vantris/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/vantrisjs/vantris/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/vantrisjs/vantris/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/vantrisjs/vantris/compare/v0.4.0...v0.5.0

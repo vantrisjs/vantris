@@ -5,9 +5,8 @@ import type { HtmlEntry } from "../types/html.js";
 import { HTML_ENTRY_FILENAME } from "../shared/constants.js";
 import { BuildError, HtmlEntryError } from "../shared/errors.js";
 import { isFile } from "../utils/fs.js";
-import { isWithin } from "../utils/paths.js";
-import { envDefine } from "../env/index.js";
-import { bundle, entryFileName } from "./bundle.js";
+import { buildDefine } from "../env/index.js";
+import { bundle, bundleLibrary, entryFileName } from "./bundle.js";
 import {
   collectAssetRefs,
   injectStylesheets,
@@ -17,8 +16,8 @@ import {
   type HtmlReplacement,
 } from "./html.js";
 import { copyPublicDir, emitHashedAsset } from "./assets.js";
-import { isStyle, loadPostcss, processStyle } from "./css.js";
-import { cleanOutDir, writeHtml } from "./output.js";
+import { emitStyle, isStyle, loadPostcss, processStyle } from "./css.js";
+import { prepareOutDir, writeHtml } from "./output.js";
 
 /** Options handed to the build pipeline. */
 export interface BuildOptions {
@@ -53,6 +52,9 @@ export interface BuildResult {
  */
 export async function runBuild(options: BuildOptions): Promise<BuildResult> {
   const { ctx, entry } = options;
+  // Library mode is a separate, HTML-free pipeline.
+  if (ctx.config.build.lib) return runLibraryBuild(ctx);
+
   const { paths, build } = ctx.config;
   const log = ctx.logger;
   const started = Date.now();
@@ -76,11 +78,12 @@ export async function runBuild(options: BuildOptions): Promise<BuildResult> {
     }
   }
 
-  // Refuse to wipe anything that would destroy the project.
-  assertSafeOutDir(paths.outDir, paths.root, paths.rootDir, paths.publicDir);
-
-  log.debug(`cleaning ${rel(paths.outDir)}${sep}`);
-  await cleanOutDir(paths.outDir);
+  // Empty (when configured) and prepare the output directory — safely guarded.
+  log.debug(build.emptyOutDir ? `cleaning ${rel(paths.outDir)}${sep}` : "keeping outDir");
+  await prepareOutDir(
+    { outDir: paths.outDir, root: paths.root, rootDir: paths.rootDir, publicDir: paths.publicDir },
+    build.emptyOutDir,
+  );
 
   const inputs = Object.fromEntries(
     htmlEntries.map((e) => [e.name, e.entryFile]),
@@ -93,7 +96,7 @@ export async function runBuild(options: BuildOptions): Promise<BuildResult> {
     entries: inputs,
     config: ctx.config,
     resolver: ctx.resolver,
-    define: envDefine(ctx.env, ctx.mode, ctx.config.base),
+    define: buildDefine(ctx.env, ctx.mode, ctx.config.base, ctx.config.define),
     postcss,
   });
   log.debug(
@@ -141,6 +144,7 @@ export async function runBuild(options: BuildOptions): Promise<BuildResult> {
     assetsDir: build.assetsDir,
     base,
     minify: build.minify,
+    sourcemap: build.sourcemap,
     postcss,
     resolver: ctx.resolver,
   };
@@ -152,9 +156,9 @@ export async function runBuild(options: BuildOptions): Promise<BuildResult> {
 
     let fileName: string;
     if (isStyle(file)) {
-      const { css } = await processStyle(file, styleOptions);
+      const { css, map } = await processStyle(file, styleOptions);
       const name = basename(file).replace(/\.(scss|sass|less|styl|stylus)$/i, ".css");
-      fileName = await emitHashedAsset(paths.outDir, build.assetsDir, name, css);
+      fileName = await emitStyle(styleOptions, name, css, map);
     } else {
       fileName = await emitHashedAsset(
         paths.outDir,
@@ -181,17 +185,46 @@ export async function runBuild(options: BuildOptions): Promise<BuildResult> {
   return { outDir: paths.outDir, entries, durationMs, fileCount };
 }
 
-/** Guards against an `outDir` that overlaps the project's source/root. */
-function assertSafeOutDir(
-  outDir: string,
-  root: string,
-  rootDir: string,
-  publicDir: string,
-): void {
-  const clashes = outDir === root || outDir === rootDir || outDir === publicDir;
-  if (clashes || isWithin(outDir, root)) {
-    throw new BuildError(
-      `Refusing to clean outDir "${outDir}": it overlaps the project root or source directories.`,
-    );
+/**
+ * Produces a library build: a single entry bundled into every requested format
+ * (`esm`/`cjs`/`iife`) in one pass. There is no HTML pipeline — the output is a
+ * set of distribution files in `outDir`.
+ *
+ * @throws {BuildError} when the entry is missing or bundling fails.
+ */
+async function runLibraryBuild(ctx: Context): Promise<BuildResult> {
+  const { paths, build } = ctx.config;
+  const lib = build.lib!;
+  const log = ctx.logger;
+  const started = Date.now();
+  const rel = (p: string) => relative(paths.root, p) || ".";
+
+  if (!(await isFile(lib.entry))) {
+    throw new BuildError(`Library entry not found: ${lib.entry}`);
   }
+
+  log.debug(build.emptyOutDir ? `cleaning ${rel(paths.outDir)}${sep}` : "keeping outDir");
+  await prepareOutDir(
+    { outDir: paths.outDir, root: paths.root, rootDir: paths.rootDir, publicDir: paths.publicDir },
+    build.emptyOutDir,
+  );
+
+  const postcss = await loadPostcss(paths.root);
+  log.debug(`bundling library for ${lib.formats.join(", ")}…`);
+  const { files } = await bundleLibrary({
+    config: ctx.config,
+    resolver: ctx.resolver,
+    define: buildDefine(ctx.env, ctx.mode, ctx.config.base, ctx.config.define),
+    postcss,
+  });
+
+  const durationMs = Date.now() - started;
+  log.debug(`library build complete in ${durationMs}ms → ${rel(paths.outDir)}${sep}`);
+
+  return {
+    outDir: paths.outDir,
+    entries: files.map((f) => ({ src: lib.entry, fileName: f.fileName })),
+    durationMs,
+    fileCount: files.length,
+  };
 }

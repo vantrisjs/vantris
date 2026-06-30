@@ -2,9 +2,13 @@ import { readFile } from "node:fs/promises";
 import { extname, join, resolve } from "node:path";
 import { isFile } from "../utils/fs.js";
 import { isWithin } from "../utils/paths.js";
+import { cacheKey, type Cache } from "../cache/index.js";
 import { contentTypeFor } from "./mime.js";
 import { shouldTranspile, transpile } from "./transform.js";
-import { rewriteImports, type AliasUrl } from "./rewrite.js";
+import { inlineAssetImports, rewriteImports, type AliasUrl } from "./rewrite.js";
+
+/** Transpiles a module, returning cached output when the source is unchanged. */
+type TranspileFn = (source: string, file: string) => Promise<string>;
 
 /** Extensions tried when a request has no extension (bare module imports). */
 const RESOLVE_EXTENSIONS = [".ts", ".tsx", ".mts", ".js", ".mjs", ".jsx"];
@@ -34,6 +38,8 @@ export interface StaticLoaderOptions {
   define?: Record<string, string>;
   /** Alias → dev-URL rewrites applied to transpiled module imports. */
   aliases?: readonly AliasUrl[];
+  /** Optional persistent cache for transpiled modules. */
+  cache?: Cache;
 }
 
 /**
@@ -51,8 +57,8 @@ export function createStaticLoader(options: StaticLoaderOptions) {
   const root = resolve(options.root);
   const rootDir = resolve(options.rootDir);
   const publicDir = resolve(options.publicDir);
-  const define = options.define;
   const aliases = options.aliases ?? [];
+  const transpiler = makeTranspiler(options.define, options.cache);
 
   return async function loadAsset(
     pathname: string,
@@ -63,13 +69,46 @@ export function createStaticLoader(options: StaticLoaderOptions) {
     // 1. Source files: resolved against the root but confined to `rootDir`,
     //    so only the source subtree (e.g. `/src/*`) is ever served.
     const source = await resolveConfined(root, rootDir, relative);
-    if (source) return readAsset(source, define, aliases);
+    if (source) return readAsset(source, root, transpiler, aliases);
 
     // 2. Public assets: served at `/` (e.g. `/favicon.svg`).
     const asset = await resolveConfined(publicDir, publicDir, relative);
-    if (asset) return readAsset(asset, define, aliases);
+    if (asset) return readAsset(asset, root, transpiler, aliases);
 
     return null;
+  };
+}
+
+/**
+ * Builds a memoised, optionally-persistent transpiler. Output is keyed by the
+ * source content (plus defines and extension), so it is **content-addressed**:
+ * a hit is always valid, and an edit naturally produces a new key. An in-memory
+ * map avoids re-reading the disk cache within a session.
+ */
+function makeTranspiler(
+  define: Record<string, string> | undefined,
+  cache?: Cache,
+): TranspileFn {
+  const memo = new Map<string, string>();
+  const defineKey = define ? JSON.stringify(define) : "";
+
+  return async (source, file) => {
+    const key = cacheKey(source, defineKey, extname(file).toLowerCase());
+    const hit = memo.get(key);
+    if (hit !== undefined) return hit;
+
+    const stored = cache
+      ? (await cache.read(`transform/${key}.js`))?.toString("utf8")
+      : undefined;
+    if (stored !== undefined) {
+      memo.set(key, stored);
+      return stored;
+    }
+
+    const output = await transpile(source, file, define);
+    memo.set(key, output);
+    if (cache) await cache.write(`transform/${key}.js`, output);
+    return output;
   };
 }
 
@@ -101,7 +140,8 @@ async function resolveConfined(
 /** Reads a file, transpiling it when needed, and resolves its content type. */
 async function readAsset(
   file: string,
-  define: Record<string, string> | undefined,
+  root: string,
+  transpileModule: TranspileFn,
   aliases: readonly AliasUrl[],
 ): Promise<LoadedAsset> {
   const ext = extname(file).toLowerCase();
@@ -109,9 +149,12 @@ async function readAsset(
 
   if (shouldTranspile(file)) {
     const source = await readFile(file, "utf8");
-    const transpiled = await transpile(source, file, define);
+    const transpiled = await transpileModule(source, file);
+    // Aliases first, then inline asset imports to their dev URL — so
+    // `import logo from "./logo.svg"` behaves exactly as in the build.
+    const body = inlineAssetImports(rewriteImports(transpiled, aliases), file, root);
     return {
-      body: rewriteImports(transpiled, aliases),
+      body,
       contentType: contentTypeFor(file, true),
       isHtml: false,
     };
