@@ -1,5 +1,6 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { buildProject, cleanupProjects, read } from "./helpers.js";
+import { afterEach, describe, it } from "node:test";
+import { expect } from "./utils/expect.js";
+import { buildProject, cleanupProjects, read } from "./utils/helpers.js";
 
 afterEach(cleanupProjects);
 

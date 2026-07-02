@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "node:test";
+import { expect } from "./utils/expect.js";
 import { box, type BorderStyle } from "../src/logger/format.js";
 import { displayWidth } from "../src/logger/width.js";
 import { createTheme } from "../src/logger/theme.js";

@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "node:test";
+import { expect } from "./utils/expect.js";
 import { autolink, hyperlink, renderLink } from "../src/logger/links.js";
 import { createTheme } from "../src/logger/theme.js";
 

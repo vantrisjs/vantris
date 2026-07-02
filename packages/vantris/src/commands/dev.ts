@@ -1,6 +1,7 @@
 import { relative } from "node:path";
 import type { Command } from "../types/command.js";
-import { startDevServer } from "../server/index.js";
+import { createDevServer } from "../server/index.js";
+import { prebundleDeps } from "../server/prebundle.js";
 import { createWatcher } from "../shared/watcher.js";
 import {
   inspectProject,
@@ -12,24 +13,42 @@ import { printServerPanel } from "./ui.js";
 /** Coalesce a burst of filesystem events into a single reload. */
 const RELOAD_DEBOUNCE_MS = 50;
 
+/** Reads a `--host [value]` / `--host=value` flag (bare flag → all interfaces). */
+function parseHost(args: readonly string[]): string | undefined {
+  const flag = args.indexOf("--host");
+  if (flag !== -1) {
+    const next = args[flag + 1];
+    return next && !next.startsWith("-") ? next : "0.0.0.0";
+  }
+  const inline = args.find((arg) => arg.startsWith("--host="));
+  return inline ? inline.slice("--host=".length) : undefined;
+}
+
 /**
  * `vantris dev` — start the development server.
  *
- * Runtime flow: load config (via context) → inspect project → init dev server
- * (HTTP + WebSocket) → start the file watcher → trigger live reload on change.
+ * Runtime flow: inspect project → pre-bundle dependencies → start the native
+ * dev server (HTTP/HTTPS + WebSocket) → watch files → live-reload on change.
  * Runs until interrupted (Ctrl-C), then shuts everything down cleanly.
  */
 export const dev: Command = {
   name: "dev",
   description: "Start the development server",
   defaultMode: "development",
-  async run(ctx) {
+  async run(ctx, args) {
     const { root, rootDir, publicDir } = ctx.config.paths;
     await prepareDirectories(ctx, [rootDir, publicDir]);
 
     const entry = await inspectProject(ctx);
+    const prebundle = await prebundleDeps(ctx);
 
-    const server = await startDevServer({ ctx, entry });
+    const host = parseHost(args);
+    const server = await createDevServer({
+      ctx,
+      entry,
+      prebundle,
+      ...(host ? { host } : {}),
+    });
     printServerPanel(ctx.logger, {
       kind: "dev",
       local: server.url,

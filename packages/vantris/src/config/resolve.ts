@@ -1,13 +1,21 @@
 import { basename } from "node:path";
-import type { Config, DefineValue, LibConfig } from "../types/config.js";
+import type {
+  Config,
+  DefineValue,
+  LibConfig,
+  ServerConfig,
+} from "../types/config.js";
 import type {
   AliasEntry,
   ResolvedBuildConfig,
   ResolvedConfig,
+  ResolvedCors,
   ResolvedDevConfig,
   ResolvedLibConfig,
   ResolvedPreviewConfig,
+  ResolvedProxyRule,
   ResolvedResolveConfig,
+  ResolvedServerConfig,
 } from "../types/config-resolved.js";
 import type { ResolvedPaths } from "../types/paths.js";
 import {
@@ -51,6 +59,8 @@ export function resolveConfig(
     host: raw.dev?.host ?? DEV_DEFAULTS.host,
   };
 
+  const server = resolveServer(raw.server, base);
+
   const assetsDir = raw.build?.assetsDir ?? BUILD_DEFAULTS.assetsDir;
   const build: ResolvedBuildConfig = {
     minify: raw.build?.minify ?? BUILD_DEFAULTS.minify,
@@ -91,12 +101,54 @@ export function resolveConfig(
     paths,
     base,
     dev,
+    server,
     build,
     preview,
     resolve,
     define,
     cacheDir,
     configFile,
+  };
+}
+
+const DEFAULT_CORS_METHODS = ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"];
+
+/** Normalises dev-server network options; `base` falls back to the global base. */
+function resolveServer(
+  server: ServerConfig | undefined,
+  globalBase: string,
+): ResolvedServerConfig {
+  const proxy: ResolvedProxyRule[] = Object.entries(server?.proxy ?? {})
+    .map(([context, value]) => {
+      const options = typeof value === "string" ? { target: value } : value;
+      return {
+        context,
+        target: options.target,
+        changeOrigin: options.changeOrigin ?? true,
+        secure: options.secure ?? true,
+        rewrite: options.rewrite ?? null,
+      };
+    })
+    // Longest prefix first, so `/api/v2` wins over `/api`.
+    .sort((a, b) => b.context.length - a.context.length);
+
+  let cors: ResolvedCors | null = null;
+  if (server?.cors) {
+    const value = server.cors === true ? {} : server.cors;
+    cors = {
+      origin: value.origin ?? true,
+      methods: value.methods ?? DEFAULT_CORS_METHODS,
+      headers: value.headers ?? [],
+      credentials: value.credentials ?? false,
+    };
+  }
+
+  return {
+    https: server?.https ?? false,
+    proxy,
+    cors,
+    base: server?.base ? normalizeBase(server.base) : globalBase,
+    spaFallback: server?.spaFallback ?? true,
   };
 }
 

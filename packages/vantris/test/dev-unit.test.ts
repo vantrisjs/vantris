@@ -1,8 +1,9 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, it } from "node:test";
+import { expect } from "./utils/expect.js";
 import { contentTypeFor } from "../src/server/mime.js";
 import { createStaticLoader } from "../src/server/static.js";
 import { shouldTranspile, transpile } from "../src/server/transform.js";
-import { cleanupProjects, makeContext, makeProject } from "./helpers.js";
+import { cleanupProjects, makeContext, makeProject } from "./utils/helpers.js";
 
 afterEach(cleanupProjects);
 

@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "node:test";
+import { expect } from "./utils/expect.js";
 import { run } from "../src/cli/run.js";
-import { silentLogger } from "./helpers.js";
+import { silentLogger } from "./utils/helpers.js";
 
 describe("cli run()", () => {
   it("prints help when given no command", async () => {

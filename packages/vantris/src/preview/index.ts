@@ -1,19 +1,14 @@
 import { readFile } from "node:fs/promises";
+import { createServer } from "node:http";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import { extname, join } from "node:path";
-import { getRequestHeader, getRequestURL } from "h3";
-import type { H3Event } from "h3";
 import type { Context } from "../types/context.js";
 import { HTML_ENTRY_FILENAME } from "../shared/constants.js";
 import { PreviewError } from "../shared/errors.js";
 import { isDirectory, isFile } from "../utils/fs.js";
 import { getNetworkHost } from "../utils/network.js";
 import { openBrowser } from "../utils/open.js";
-import {
-  closeServer,
-  createNodeServer,
-  listen,
-  localUrl,
-} from "../server/node.js";
+import { closeServer, listen, localUrl } from "../server/http.js";
 import { createOutputLoader } from "./static.js";
 
 /** Options for {@link startPreviewServer}. */
@@ -45,9 +40,10 @@ export interface PreviewServerHandle {
 const HTML_HEADERS = { "content-type": "text/html; charset=utf-8" } as const;
 
 /**
- * Starts the H3-based preview server, serving a finished build from `outDir`
- * exactly as produced — no compilation. Static files are served with the right
- * content types, and unmatched navigations fall back to `index.html` (SPA).
+ * Starts the preview server on native `node:http`, serving a finished build
+ * from `outDir` exactly as produced — no compilation. Static files are served
+ * with the right content types, and unmatched navigations fall back to
+ * `index.html` (SPA).
  *
  * @throws {PreviewError} when `outDir` does not exist (no build yet).
  * @throws {ServerError} when the port is already in use.
@@ -69,32 +65,37 @@ export async function startPreviewServer(
   const loadFile = createOutputLoader(paths.outDir);
   const indexFile = join(paths.outDir, HTML_ENTRY_FILENAME);
 
-  const handler = async (event: H3Event) => {
-    const { pathname } = getRequestURL(event);
+  const handle = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
+    const url = new URL(req.url ?? "/", "http://localhost");
 
     // Map the public URL (which includes `base`) back to a path under outDir.
-    const filePath = stripBase(pathname, base);
+    const filePath = stripBase(url.pathname, base);
     if (filePath !== null) {
       const file = await loadFile(filePath);
       if (file) {
-        return new Response(file.body, {
-          headers: { "content-type": file.contentType },
-        });
+        res.writeHead(200, { "content-type": file.contentType });
+        res.end(file.body);
+        return;
       }
     }
 
     // SPA fallback: navigations resolve to index.html.
-    if (isNavigation(event, pathname) && (await isFile(indexFile))) {
-      return new Response(await readFile(indexFile), { headers: HTML_HEADERS });
+    if (isNavigation(req, url.pathname) && (await isFile(indexFile))) {
+      res.writeHead(200, HTML_HEADERS);
+      res.end(await readFile(indexFile));
+      return;
     }
 
-    return new Response(`404 Not Found: ${pathname}`, {
-      status: 404,
-      headers: { "content-type": "text/plain; charset=utf-8" },
-    });
+    res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
+    res.end(`404 Not Found: ${url.pathname}`);
   };
 
-  const server = createNodeServer(handler);
+  const server = createServer((req, res) => {
+    handle(req, res).catch(() => {
+      if (!res.headersSent) res.writeHead(500, { "content-type": "text/plain" });
+      res.end("500 Internal Server Error");
+    });
+  });
   const port = await listen(server, preview.port, preview.host);
 
   // Only a wildcard host is reachable over the network; `0.0.0.0`/`::` aren't
@@ -122,10 +123,6 @@ export async function startPreviewServer(
 /**
  * Maps a public pathname (which includes `base`) to a path relative to the
  * output root, or `null` when the request is outside `base`.
- *
- * - base `/` → pathname unchanged.
- * - `/app/` + `/app/assets/x.js` → `/assets/x.js`.
- * - `/app/` + `/app` or `/app/` → `/` (the app root).
  */
 function stripBase(pathname: string, base: string): string | null {
   if (base === "/") return pathname;
@@ -135,7 +132,7 @@ function stripBase(pathname: string, base: string): string | null {
 }
 
 /** Whether a request should fall back to `index.html` (a page navigation). */
-function isNavigation(event: H3Event, pathname: string): boolean {
+function isNavigation(req: IncomingMessage, pathname: string): boolean {
   if (extname(pathname) === "") return true;
-  return (getRequestHeader(event, "accept") ?? "").includes("text/html");
+  return (req.headers.accept ?? "").includes("text/html");
 }

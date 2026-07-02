@@ -2,7 +2,7 @@
 export const APP_NAME = "vantris";
 
 /** Current Vantris version. Kept in sync with package.json at release time. */
-export const VERSION = "0.8.0";
+export const VERSION = "0.9.0";
 
 /** The HTML entry filename Vantris looks for at the project root. */
 export const HTML_ENTRY_FILENAME = "index.html";

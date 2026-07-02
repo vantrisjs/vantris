@@ -30,8 +30,10 @@ export {
 } from "./html/index.js";
 
 // Dev server
-export { startDevServer } from "./server/index.js";
+export { createDevServer, startDevServer } from "./server/index.js";
 export type { DevServerOptions, DevServerHandle } from "./server/index.js";
+export { getRuntime } from "./runtime.js";
+export type { Runtime } from "./runtime.js";
 
 // Build system
 export { runBuild } from "./build/index.js";
@@ -83,8 +85,15 @@ export type {
   LibConfig,
   LibFormat,
   DefineValue,
+  ServerConfig,
+  HttpsConfig,
+  ProxyOptions,
+  CorsOptions,
   ResolvedConfig,
   ResolvedDevConfig,
+  ResolvedServerConfig,
+  ResolvedProxyRule,
+  ResolvedCors,
   ResolvedBuildConfig,
   ResolvedLibConfig,
   ResolvedPreviewConfig,

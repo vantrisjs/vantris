@@ -13,10 +13,17 @@ export type {
   LibConfig,
   LibFormat,
   DefineValue,
+  ServerConfig,
+  HttpsConfig,
+  ProxyOptions,
+  CorsOptions,
 } from "./config.js";
 export type {
   ResolvedConfig,
   ResolvedDevConfig,
+  ResolvedServerConfig,
+  ResolvedProxyRule,
+  ResolvedCors,
   ResolvedBuildConfig,
   ResolvedLibConfig,
   ResolvedPreviewConfig,

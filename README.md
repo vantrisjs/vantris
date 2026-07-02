@@ -10,8 +10,9 @@ you configure Vantris, never them.
 
 ## Features
 
-- ⚡ **Dev server** — H3 server, on-the-fly TypeScript via esbuild, full-page
-  live reload over WebSocket.
+- ⚡ **Dev server** — native (Node.js & Bun), zero-dependency HTTP + WebSocket,
+  on-the-fly TypeScript, dependency pre-bundling, full-page live reload.
+- 🔐 **Networking** — HTTPS (self-signed dev cert), proxy, CORS, SPA fallback.
 - 📦 **Production build** — Rolldown bundling: tree shaking, minification, code
   splitting, content-hashed output, with `build --watch`.
 - 📚 **Library mode** — bundle one entry to `esm` + `cjs` + `iife` in a single
@@ -133,10 +134,19 @@ export default defineConfig({
   outDir: "./dist",      // build output
   base: "/",             // public base path, prefixed to built URLs
 
-  // Dev server
+  // Dev server (host/port)
   dev: {
     port: 3000,
     host: "localhost",
+  },
+
+  // Dev-server networking (see "Network configuration" below)
+  server: {
+    https: false,          // or true (self-signed dev cert) | { cert, key }
+    proxy: {},             // e.g. { "/api": "http://localhost:8080" }
+    cors: false,           // or true | { origin, methods, headers, credentials }
+    spaFallback: true,     // history-API fallback to index.html
+    // base: "/app/",      // defaults to the top-level `base`
   },
 
   // Global constant replacements (inlined in dev and build)
@@ -194,16 +204,75 @@ build: {
 
 ## Dev (`vantris dev`)
 
-Starts an H3 server that:
+Starts a **native** server (Node.js `node:http` or `Bun.serve` — no HTTP or
+WebSocket dependency) that:
 
 - serves `index.html`,
 - transpiles `.ts`/`.tsx` on the fly with esbuild (transform only — no bundling),
-- live-reloads the browser on file changes via an injected WebSocket client.
+- pre-bundles `node_modules` dependencies (into `node_modules/.vantris/deps/`)
+  so cold starts are fast and CommonJS packages work as ESM,
+- live-reloads the browser via an injected WebSocket client (RFC 6455,
+  implemented in-house).
 
 Serving follows a Vite-style allowlist: source modules come from `rootDir`
 (`/src/*`), `public/` contents are served at `/`, and everything else under the
 project root (`node_modules`, `package.json`, lockfiles, config files) is **not**
 reachable.
+
+Bind to your LAN with `--host` (overrides `dev.host`):
+
+```bash
+vantris dev --host          # all interfaces (0.0.0.0)
+vantris dev --host 0.0.0.0
+```
+
+## Network configuration (`server`)
+
+`host`/`port` live in `dev`; the networking layer lives in `server`:
+
+```ts
+import { defineConfig } from "vantris";
+
+export default defineConfig({
+  server: {
+    // Serve over HTTPS. `true` generates a self-signed *dev* certificate;
+    // pass your own with { cert, key } (PEM contents or file paths).
+    https: true,
+
+    // Proxy path prefixes to another origin (via the platform fetch).
+    proxy: {
+      "/api": "http://localhost:8080",
+      "/auth": {
+        target: "https://auth.example.com",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/auth/, ""),
+      },
+    },
+
+    // CORS — off by default. `true` for permissive defaults, or customise:
+    cors: { origin: ["http://localhost:3000"], credentials: true },
+
+    // History-API fallback for client-side routing (on by default).
+    spaFallback: true,
+
+    // Serve the dev app under a sub-path (defaults to the top-level `base`).
+    base: "/app/",
+  },
+});
+```
+
+- **HTTPS** — `https: true` warns that it's a development certificate (browsers
+  will prompt); use `{ cert, key }` for a trusted one.
+- **Proxy** — an unreachable target responds with a clear **502**. `rewrite`
+  reshapes the path before forwarding; `changeOrigin` rewrites the `Host`.
+- **CORS** — sets `Access-Control-*` headers and answers preflight `OPTIONS`.
+- **SPA fallback** — route-like requests (no file extension) fall back to
+  `index.html`; a missing `.js`/`.png` still returns a real 404.
+- **Base** — the dev server is mounted under it, and generated URLs (asset
+  imports) respect it.
+
+Both runtimes go through the **same** `createDevServer()`, so behaviour is
+identical under Node.js and Bun.
 
 ## Build (`vantris build`)
 

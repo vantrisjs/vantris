@@ -1,13 +1,13 @@
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import type { Config } from "../src/types/config.js";
-import type { Context } from "../src/types/context.js";
-import type { Logger } from "../src/types/logger.js";
-import { resolveConfig } from "../src/config/resolve.js";
-import { createResolver } from "../src/resolver/index.js";
-import { runBuild, type BuildResult } from "../src/build/index.js";
-import { detectHtmlEntry } from "../src/html/index.js";
+import type { Config } from "../../src/types/config.js";
+import type { Context } from "../../src/types/context.js";
+import type { Logger } from "../../src/types/logger.js";
+import { resolveConfig } from "../../src/config/resolve.js";
+import { createResolver } from "../../src/resolver/index.js";
+import { runBuild, type BuildResult } from "../../src/build/index.js";
+import { detectHtmlEntry } from "../../src/html/index.js";
 
 /** A logger that records every message instead of printing. */
 export interface CapturingLogger extends Logger {

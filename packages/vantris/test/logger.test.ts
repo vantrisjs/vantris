@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "node:test";
+import { expect } from "./utils/expect.js";
 import { createLogger } from "../src/shared/logger.js";
 
 function capture() {

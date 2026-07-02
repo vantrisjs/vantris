@@ -38,8 +38,16 @@ export interface StaticLoaderOptions {
   define?: Record<string, string>;
   /** Alias → dev-URL rewrites applied to transpiled module imports. */
   aliases?: readonly AliasUrl[];
+  /** Dev base path prepended to generated asset URLs. @default "/" */
+  base?: string;
   /** Optional persistent cache for transpiled modules. */
   cache?: Cache;
+  /** Directory of pre-bundled dependencies to serve. */
+  depsDir?: string;
+  /** Serve prefix for pre-bundled deps (e.g. `/@deps/`). */
+  depsPrefix?: string;
+  /** Bare specifier → served URL, from pre-bundling. */
+  bareImports?: ReadonlyMap<string, string>;
 }
 
 /**
@@ -58,6 +66,9 @@ export function createStaticLoader(options: StaticLoaderOptions) {
   const rootDir = resolve(options.rootDir);
   const publicDir = resolve(options.publicDir);
   const aliases = options.aliases ?? [];
+  const base = options.base ?? "/";
+  const bareImports = options.bareImports;
+  const depsPrefix = options.depsPrefix?.replace(/^\/+/, ""); // e.g. "@deps/"
   const transpiler = makeTranspiler(options.define, options.cache);
 
   return async function loadAsset(
@@ -66,14 +77,23 @@ export function createStaticLoader(options: StaticLoaderOptions) {
     const relative = decodeURIComponent(pathname).replace(/^\/+/, "");
     if (!relative) return null;
 
+    // 0. Pre-bundled dependency (already valid ESM — served verbatim).
+    if (options.depsDir && depsPrefix && relative.startsWith(depsPrefix)) {
+      const depFile = resolve(options.depsDir, relative.slice(depsPrefix.length));
+      if (isWithin(options.depsDir, depFile) && (await isFile(depFile))) {
+        return { body: await readFile(depFile), contentType: contentTypeFor(depFile), isHtml: false };
+      }
+      return null;
+    }
+
     // 1. Source files: resolved against the root but confined to `rootDir`,
     //    so only the source subtree (e.g. `/src/*`) is ever served.
     const source = await resolveConfined(root, rootDir, relative);
-    if (source) return readAsset(source, root, transpiler, aliases);
+    if (source) return readAsset(source, root, transpiler, aliases, base, bareImports);
 
     // 2. Public assets: served at `/` (e.g. `/favicon.svg`).
     const asset = await resolveConfined(publicDir, publicDir, relative);
-    if (asset) return readAsset(asset, root, transpiler, aliases);
+    if (asset) return readAsset(asset, root, transpiler, aliases, base, bareImports);
 
     return null;
   };
@@ -143,6 +163,8 @@ async function readAsset(
   root: string,
   transpileModule: TranspileFn,
   aliases: readonly AliasUrl[],
+  base: string,
+  bareImports: ReadonlyMap<string, string> | undefined,
 ): Promise<LoadedAsset> {
   const ext = extname(file).toLowerCase();
   const isHtml = ext === ".html";
@@ -150,9 +172,14 @@ async function readAsset(
   if (shouldTranspile(file)) {
     const source = await readFile(file, "utf8");
     const transpiled = await transpileModule(source, file);
-    // Aliases first, then inline asset imports to their dev URL — so
-    // `import logo from "./logo.svg"` behaves exactly as in the build.
-    const body = inlineAssetImports(rewriteImports(transpiled, aliases), file, root);
+    // Aliases + bare deps first, then inline asset imports to their dev URL —
+    // so `import logo from "./logo.svg"` behaves exactly as in the build.
+    const body = inlineAssetImports(
+      rewriteImports(transpiled, aliases, bareImports),
+      file,
+      root,
+      base,
+    );
     return {
       body,
       contentType: contentTypeFor(file, true),

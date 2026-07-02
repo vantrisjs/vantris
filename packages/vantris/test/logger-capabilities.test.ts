@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "node:test";
+import { expect } from "./utils/expect.js";
 import { detectCapabilities } from "../src/logger/capabilities.js";
 
 const env = (e: Record<string, string>) => e as NodeJS.ProcessEnv;

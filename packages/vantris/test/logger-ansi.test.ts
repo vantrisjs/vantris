@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "node:test";
+import { expect } from "./utils/expect.js";
 import { createPainter, hexToRgb, rgbToAnsi256 } from "../src/logger/ansi.js";
 
 describe("ansi colour", () => {

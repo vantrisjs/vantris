@@ -54,7 +54,9 @@ Add scripts to your `package.json`:
 
 ## What you get
 
-- **Dev** — H3 server, on-the-fly TypeScript (esbuild), full-page live reload.
+- **Dev** — native Node.js/Bun server (zero HTTP/WS dependency), on-the-fly
+  TypeScript, dependency pre-bundling, full-page live reload.
+- **Networking** — HTTPS (self-signed dev cert), proxy, CORS, SPA fallback.
 - **Build** — Rolldown bundling: tree shaking, minification, code splitting,
   content-hashed output, source maps, and `build --watch`.
 - **Library mode** — bundle one entry to `esm` + `cjs` + `iife` in one build.
@@ -83,6 +85,9 @@ export default defineConfig({
   base: "/",
 
   dev: { port: 3000, host: "localhost" },
+
+  // Dev-server networking (see below)
+  server: { https: false, proxy: {}, cors: false, spaFallback: true },
 
   // Inlined in dev and build (string | number | boolean)
   define: { __DEV__: true, __APP_VERSION__: "1.0.0" },
@@ -155,6 +160,30 @@ bundle:
 console.log(import.meta.env.VANTRIS_API); // "https://api.example.com"
 console.log(import.meta.env.MODE, import.meta.env.PROD); // "production" true
 ```
+
+## Network configuration (`server`)
+
+The dev server runs on native Node.js/Bun modules (no `h3`/`ws`). Configure the
+networking layer under `server` (`host`/`port` stay in `dev`):
+
+```ts
+export default defineConfig({
+  server: {
+    https: true, // self-signed dev cert (or { cert, key })
+    proxy: {
+      "/api": "http://localhost:8080",
+      "/auth": { target: "https://auth.example.com", rewrite: (p) => p.replace(/^\/auth/, "") },
+    },
+    cors: { origin: ["http://localhost:3000"], credentials: true }, // off by default
+    spaFallback: true, // history-API fallback (route-only)
+    base: "/app/",     // defaults to the top-level `base`
+  },
+});
+```
+
+An unreachable proxy target returns a clear 502. `vantris dev --host` binds to
+all interfaces (overrides `dev.host`). The same `createDevServer()` runs under
+Node.js and Bun, so behaviour is identical.
 
 ## Aliases
 

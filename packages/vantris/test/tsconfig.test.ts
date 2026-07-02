@@ -1,8 +1,9 @@
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, it } from "node:test";
+import { expect } from "./utils/expect.js";
 import { readTsconfigAliases } from "../src/config/tsconfig.js";
 import { createContext } from "../src/shared/context.js";
-import { cleanupProjects, makeProject, silentLogger } from "./helpers.js";
+import { cleanupProjects, makeProject, silentLogger } from "./utils/helpers.js";
 
 afterEach(cleanupProjects);
 

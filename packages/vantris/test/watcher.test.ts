@@ -1,8 +1,9 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, it } from "node:test";
+import { expect } from "./utils/expect.js";
 import { createWatcher, type WatchEvent } from "../src/shared/watcher.js";
-import { cleanupProjects, makeProject, silentLogger, waitFor } from "./helpers.js";
+import { cleanupProjects, makeProject, silentLogger, waitFor } from "./utils/helpers.js";
 
 afterEach(cleanupProjects);
 
@@ -18,7 +19,7 @@ describe("createWatcher", () => {
     });
 
     try {
-      // Let chokidar finish its initial scan before mutating.
+      // Let the watcher seed its set of known files before mutating.
       await new Promise((r) => setTimeout(r, 400));
       await writeFile(join(dir, "src/main.ts"), "2;");
       await waitFor(() => events.length > 0, 5000);

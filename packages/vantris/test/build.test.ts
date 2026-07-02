@@ -1,6 +1,7 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, it } from "node:test";
+import { expect } from "./utils/expect.js";
 import { runBuild } from "../src/build/index.js";
 import { detectHtmlEntry } from "../src/html/index.js";
 import { BuildError, HtmlEntryError } from "../src/shared/errors.js";
@@ -11,7 +12,7 @@ import {
   makeContext,
   makeProject,
   read,
-} from "./helpers.js";
+} from "./utils/helpers.js";
 
 afterEach(cleanupProjects);
 

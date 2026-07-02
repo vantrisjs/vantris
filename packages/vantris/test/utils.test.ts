@@ -1,5 +1,6 @@
 import { sep } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "node:test";
+import { expect } from "./utils/expect.js";
 import { isWithin, resolveFrom } from "../src/utils/paths.js";
 
 describe("isWithin", () => {

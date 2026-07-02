@@ -19,12 +19,14 @@ const IMPORT_RE =
  * same alias semantics as the central resolver — no separate logic.
  *
  * @example `import x from "@/a"` → `import x from "/src/a"`
+ * @example `import React from "react"` → `import React from "/@deps/react.mjs"`
  */
 export function rewriteImports(
   code: string,
   aliases: readonly AliasUrl[],
+  bareImports?: ReadonlyMap<string, string>,
 ): string {
-  if (aliases.length === 0) return code;
+  if (aliases.length === 0 && (!bareImports || bareImports.size === 0)) return code;
 
   return code.replace(IMPORT_RE, (match, pre: string, quote: string, spec: string) => {
     for (const { find, url } of aliases) {
@@ -33,6 +35,8 @@ export function rewriteImports(
         return `${pre}${quote}${url}${spec.slice(find.length)}${quote}`;
       }
     }
+    const bare = bareImports?.get(spec);
+    if (bare) return `${pre}${quote}${bare}${quote}`;
     return match;
   });
 }
@@ -57,6 +61,7 @@ export function inlineAssetImports(
   code: string,
   importerFile: string,
   root: string,
+  base = "/",
 ): string {
   return code.replace(
     ASSET_IMPORT_RE,
@@ -66,10 +71,11 @@ export function inlineAssetImports(
 
       let url: string;
       if (clean.startsWith("/")) {
-        url = clean; // already an absolute served URL (e.g. alias-resolved)
+        // Already an absolute served URL (e.g. alias-resolved) — re-base it.
+        url = `${base}${clean.slice(1)}`;
       } else if (clean.startsWith(".")) {
         const abs = resolve(dirname(importerFile), clean);
-        url = `/${relative(root, abs).split(sep).join("/")}`;
+        url = `${base}${relative(root, abs).split(sep).join("/")}`;
       } else {
         return match; // bare specifier — not an asset path
       }

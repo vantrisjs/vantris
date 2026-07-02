@@ -1,6 +1,6 @@
 {
   "name": "vantris",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "A modern bundler for JavaScript/TypeScript",
   "type": "module",
   "license": "MIT",
@@ -45,35 +45,35 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "node --experimental-transform-types --import ./test/utils/ts-register.mjs --test 'test/**/*.test.ts' 'test/**/*.test.mjs'",
+    "test:watch": "node --experimental-transform-types --import ./test/utils/ts-register.mjs --test --watch 'test/**/*.test.ts' 'test/**/*.test.mjs'",
+    "test:bun": "bun test test/",
     "clean": "rm -rf dist",
-    "prepublishOnly": "pnpm run build"
+    "prepublishOnly": "npm run build"
   },
   "devDependencies": {
-    "@types/ws": "^8.18.1",
     "less": "^4.6.7",
     "sass": "^1.101.0",
-    "tsup": "^8.3.5",
-    "vitest": "^4.1.9"
+    "tsup": "^8.3.5"
   },
   "dependencies": {
-    "chokidar": "^5.0.0",
     "esbuild": "^0.28.1",
-    "h3": "2.0.1-rc.22",
     "lightningcss": "^1.32.0",
     "magic-string": "^0.30.21",
     "postcss": "^8.5.15",
     "postcss-load-config": "^6.0.1",
-    "rolldown": "^1.1.3",
-    "ws": "^8.21.0"
+    "rolldown": "^1.1.3"
   },
   "peerDependencies": {
     "less": "*",
     "sass": "*"
   },
   "peerDependenciesMeta": {
-    "sass": { "optional": true },
-    "less": { "optional": true }
+    "sass": {
+      "optional": true
+    },
+    "less": {
+      "optional": true
+    }
   }
 }

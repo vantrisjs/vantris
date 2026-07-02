@@ -1,8 +1,9 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, it } from "node:test";
+import { expect } from "./utils/expect.js";
 import { watchBuild } from "../src/build/watch.js";
-import { cleanupProjects, makeContext, makeProject, waitFor } from "./helpers.js";
+import { cleanupProjects, makeContext, makeProject, waitFor } from "./utils/helpers.js";
 
 afterEach(cleanupProjects);
 

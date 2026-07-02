@@ -61,6 +61,8 @@ export function validateConfig(input: unknown): void {
     string(dev.host, "dev.host");
   }
 
+  validateServer(config.server);
+
   const build = object(config.build, "build");
   if (build) {
     boolean(build.minify, "build.minify");
@@ -102,6 +104,58 @@ export function validateConfig(input: unknown): void {
       }
     }
   }
+}
+
+function fn(value: unknown, path: string): void {
+  if (value !== undefined && typeof value !== "function") fail(path, value, "a function");
+}
+function stringArray(value: unknown, path: string): void {
+  if (value === undefined) return;
+  if (!Array.isArray(value) || value.some((v) => typeof v !== "string")) {
+    fail(path, value, "an array of strings");
+  }
+}
+
+/** Validates the `server` (dev network) options, when present. */
+function validateServer(value: unknown): void {
+  const server = object(value, "server");
+  if (!server) return;
+
+  if (server.https !== undefined && typeof server.https !== "boolean") {
+    const https = object(server.https, "server.https");
+    if (https) {
+      if (typeof https.cert !== "string") fail("server.https.cert", https.cert, "a string");
+      if (typeof https.key !== "string") fail("server.https.key", https.key, "a string");
+    }
+  }
+
+  const proxy = object(server.proxy, "server.proxy");
+  if (proxy) {
+    for (const [key, value] of Object.entries(proxy)) {
+      if (typeof value === "string") continue;
+      const rule = object(value, `server.proxy.${key}`);
+      if (rule) {
+        if (typeof rule.target !== "string") {
+          fail(`server.proxy.${key}.target`, rule.target, "a string");
+        }
+        boolean(rule.changeOrigin, `server.proxy.${key}.changeOrigin`);
+        boolean(rule.secure, `server.proxy.${key}.secure`);
+        fn(rule.rewrite, `server.proxy.${key}.rewrite`);
+      }
+    }
+  }
+
+  if (server.cors !== undefined && typeof server.cors !== "boolean") {
+    const cors = object(server.cors, "server.cors");
+    if (cors) {
+      stringArray(cors.methods, "server.cors.methods");
+      stringArray(cors.headers, "server.cors.headers");
+      boolean(cors.credentials, "server.cors.credentials");
+    }
+  }
+
+  string(server.base, "server.base");
+  boolean(server.spaFallback, "server.spaFallback");
 }
 
 const LIB_FORMATS = new Set(["esm", "cjs", "iife"]);

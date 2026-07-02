@@ -29,6 +29,87 @@ export interface DevConfig {
   host?: string;
 }
 
+/** Explicit TLS certificate material for {@link ServerConfig.https}. */
+export interface HttpsConfig {
+  /** PEM certificate (contents or a path resolved against `root`). */
+  cert: string;
+  /** PEM private key (contents or a path resolved against `root`). */
+  key: string;
+}
+
+/** Options for proxying matched requests to another origin. */
+export interface ProxyOptions {
+  /** Target origin, e.g. `"http://localhost:8080"`. */
+  target: string;
+  /** Rewrite the `Host` header to the target's. @default true */
+  changeOrigin?: boolean;
+  /** Rewrite the request path before forwarding (e.g. strip a prefix). */
+  rewrite?: (path: string) => string;
+  /** Verify TLS certificates for an `https` target. @default true */
+  secure?: boolean;
+}
+
+/** Cross-Origin Resource Sharing options. */
+export interface CorsOptions {
+  /**
+   * Allowed origin(s). `true` reflects the request's `Origin`.
+   * @default true
+   */
+  origin?: string | string[] | boolean;
+  /** Allowed methods. @default ["GET","HEAD","PUT","PATCH","POST","DELETE"] */
+  methods?: string[];
+  /** Allowed request headers (echoed to `Access-Control-Allow-Headers`). */
+  headers?: string[];
+  /** Allow credentials (`Access-Control-Allow-Credentials`). @default false */
+  credentials?: boolean;
+}
+
+/**
+ * Dev-server network options (v0.9.0).
+ *
+ * `host`/`port` intentionally stay in {@link DevConfig}; this covers the
+ * networking layer — HTTPS, proxying, CORS, base path, and SPA fallback.
+ */
+export interface ServerConfig {
+  /**
+   * Serve over HTTPS. `true` generates a self-signed **development**
+   * certificate on the fly; pass `{ cert, key }` to use your own.
+   *
+   * @default false
+   */
+  https?: boolean | HttpsConfig;
+
+  /**
+   * Proxy rules mapping a request-path prefix to a target origin (a string) or
+   * {@link ProxyOptions}.
+   *
+   * @example { "/api": "http://localhost:8080" }
+   */
+  proxy?: Record<string, string | ProxyOptions>;
+
+  /**
+   * Enable CORS. `true` applies permissive defaults; an object customises it.
+   * Off by default.
+   *
+   * @default false
+   */
+  cors?: boolean | CorsOptions;
+
+  /**
+   * Sub-path the dev server is mounted under. Defaults to the top-level
+   * {@link Config.base}. Injected scripts and asset URLs respect it.
+   */
+  base?: string;
+
+  /**
+   * History-API fallback: an unmatched, non-file route serves `index.html`
+   * (so client-side routing works on refresh).
+   *
+   * @default true
+   */
+  spaFallback?: boolean;
+}
+
 /**
  * Information about a chunk, passed to a {@link ChunkFileNames} function.
  *
@@ -280,9 +361,15 @@ export interface Config {
   base?: string;
 
   /**
-   * Development server options. See {@link DevConfig}.
+   * Development server options (host/port). See {@link DevConfig}.
    */
   dev?: DevConfig;
+
+  /**
+   * Dev-server network options (HTTPS, proxy, CORS, base, SPA fallback). See
+   * {@link ServerConfig}.
+   */
+  server?: ServerConfig;
 
   /**
    * Production build options. See {@link BuildConfig}.

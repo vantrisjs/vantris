@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, it } from "node:test";
+import { expect } from "./utils/expect.js";
 import {
   clientEnv,
   envDefine,
@@ -6,7 +7,7 @@ import {
   loadEnv,
   parseEnv,
 } from "../src/env/index.js";
-import { cleanupProjects, makeProject } from "./helpers.js";
+import { cleanupProjects, makeProject } from "./utils/helpers.js";
 
 afterEach(cleanupProjects);
 

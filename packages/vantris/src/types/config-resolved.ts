@@ -12,6 +12,40 @@ export interface ResolvedDevConfig {
   readonly host: string;
 }
 
+/** A normalised proxy rule. */
+export interface ResolvedProxyRule {
+  /** Request-path prefix that activates this rule. */
+  readonly context: string;
+  /** Target origin. */
+  readonly target: string;
+  readonly changeOrigin: boolean;
+  readonly secure: boolean;
+  /** Optional path rewrite before forwarding. */
+  readonly rewrite: ((path: string) => string) | null;
+}
+
+/** Normalised CORS options (present only when CORS is enabled). */
+export interface ResolvedCors {
+  readonly origin: string | string[] | boolean;
+  readonly methods: readonly string[];
+  readonly headers: readonly string[];
+  readonly credentials: boolean;
+}
+
+/** Dev-server network options after defaults/normalisation. */
+export interface ResolvedServerConfig {
+  /** `false`, `true` (generate a self-signed cert), or explicit cert material. */
+  readonly https: boolean | { readonly cert: string; readonly key: string };
+  /** Proxy rules, longest-`context`-first. */
+  readonly proxy: readonly ResolvedProxyRule[];
+  /** CORS options, or `null` when disabled. */
+  readonly cors: ResolvedCors | null;
+  /** Dev-server base path, normalised to start and end with `/`. */
+  readonly base: string;
+  /** Whether unmatched non-file routes fall back to `index.html`. */
+  readonly spaFallback: boolean;
+}
+
 /** Preview-server options after defaults have been applied (no optionals). */
 export interface ResolvedPreviewConfig {
   readonly port: number;
@@ -75,6 +109,8 @@ export interface ResolvedConfig {
   readonly base: string;
   /** Resolved dev-server options. */
   readonly dev: ResolvedDevConfig;
+  /** Resolved dev-server network options. */
+  readonly server: ResolvedServerConfig;
   /** Resolved build options. */
   readonly build: ResolvedBuildConfig;
   /** Resolved preview-server options. */

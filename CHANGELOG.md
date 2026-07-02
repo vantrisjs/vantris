@@ -7,8 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_Reserved for future versions. Planned: HMR and a plugin system (the resolver,
-env, config, cache, and logger layers are already structured to host them)._
+_Reserved for future versions. Planned: HMR and a plugin system (the middleware
+pipeline, resolver, env, config, cache, and logger layers are already
+structured to host them)._
+
+## [0.9.0] - 2026-07-01
+
+Dev-server hardening — a native, dependency-free server (Node.js **and** Bun)
+with real networking features. No breaking changes to existing config.
+
+### Added
+
+- **`server` config** — `server.https`, `server.proxy`, `server.cors`,
+  `server.base`, and `server.spaFallback`, all strongly typed. `host`/`port`
+  stay in `dev`; the CLI `--host` flag overrides `dev.host`.
+- **HTTPS** — `server.https: true` generates a self-signed **development**
+  certificate on the fly (hand-rolled X.509 via `node:crypto`, no dependency),
+  with a clear warning; `{ cert, key }` uses your own.
+- **Proxy** — `server.proxy` forwards matched path prefixes to a target origin
+  (via the platform `fetch`), with `changeOrigin`, path `rewrite`, and an
+  explicit **502** when the target is unreachable.
+- **CORS** — `server.cors` (off by default; `true` for permissive defaults or
+  an object to customise origin/methods/headers/credentials), including
+  preflight handling.
+- **SPA fallback** — route-like requests fall back to `index.html`
+  (`server.spaFallback`, on by default); missing files still 404.
+- **Runtime dispatch** — `getRuntime()` picks the native server: `node:http`
+  under Node.js, `Bun.serve` under Bun. A **connect-style middleware pipeline**
+  (Node) is the seam the future plugin API will hook into.
+- **Dependency pre-bundling** — `node_modules` dependencies are optimised with
+  esbuild into `node_modules/.vantris/deps/` (cached), so cold starts are fast
+  and CommonJS packages work as ESM in dev.
+
+### Changed
+
+- **Removed `h3`, `ws`, and `chokidar`** — the dev server, its WebSocket
+  live-reload (RFC 6455, implemented by hand), the preview server, and the file
+  watcher (`node:fs.watch`, recursive) now run on Node/Bun native modules only.
+  Runtime dependencies are down to `rolldown`, `esbuild`, and `lightningcss`
+  (plus `magic-string` and the optional PostCSS helpers).
+- `startDevServer` is now an alias of the new **`createDevServer`** (the single
+  public entry point) — existing callers keep working.
+- A missing file with an extension now returns a genuine 404 instead of
+  `index.html` (SPA fallback is route-only); hidden files are never exposed.
+
+### Tests
+
+- **Migrated the whole suite off Vitest to `node:test`** — 220 tests run with a
+  zero-dependency runner (`node --experimental-transform-types` + a tiny
+  `.js`→`.ts` resolve hook), under both **Node.js** (`pnpm test`) and **Bun**
+  (`pnpm test:bun`). The server integration tests exercise the public
+  `createDevServer()` — proxy, CORS, HTTPS, WebSocket handshake + frames
+  (text/ping/pong/close), SPA fallback, and base path.
 
 ## [0.8.0] - 2026-06-30
 
@@ -323,7 +373,8 @@ transforms, HMR, plugins) are scaffolded as seams but not yet implemented.
 - **Build** — bundled with [tsup](https://tsup.egoist.dev/) to ESM with type
   declarations; type-checking via `tsc --noEmit`.
 
-[Unreleased]: https://github.com/vantrisjs/vantris/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/vantrisjs/vantris/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/vantrisjs/vantris/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/vantrisjs/vantris/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/vantrisjs/vantris/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/vantrisjs/vantris/compare/v0.5.0...v0.6.0

@@ -1,118 +1,88 @@
-import { readFile } from "node:fs/promises";
 import { relative } from "node:path";
-import { getRequestURL } from "h3";
-import type { H3Event } from "h3";
 import type { Context } from "../types/context.js";
 import type { HtmlEntry } from "../types/html.js";
+import { getRuntime } from "../runtime.js";
 import { injectDevClient } from "../html/index.js";
 import { buildDefine } from "../env/index.js";
 import { cacheForContext } from "../cache/index.js";
-import { createReloadSocket, type ReloadSocket } from "./websocket.js";
 import { createStaticLoader } from "./static.js";
 import type { AliasUrl } from "./rewrite.js";
-import { closeServer, createNodeServer, listen, localUrl } from "./node.js";
+import type { Prebundle } from "./prebundle.js";
+import { resolveHttps } from "./https.js";
+import { createNodeServer } from "./node.js";
+import { createBunServer } from "./bun.js";
+import type { DevServerHandle, RuntimeServerOptions } from "./shared.js";
 
-/** Options for {@link startDevServer}. */
+export type { DevServerHandle, RuntimeServerOptions } from "./shared.js";
+
+/** Options for {@link createDevServer}. */
 export interface DevServerOptions {
   ctx: Context;
   /** The detected HTML entry, when present. */
   entry: HtmlEntry | null;
+  /** Pre-bundled dependencies to serve and map bare imports to. */
+  prebundle?: Prebundle;
+  /** Overrides `dev.host` (e.g. the CLI `--host` flag). */
+  host?: string;
+  /** Overrides `dev.port`. */
+  port?: number;
 }
-
-/** A running dev server. */
-export interface DevServerHandle {
-  /** Address the server is listening on, e.g. `http://localhost:3000/`. */
-  readonly url: string;
-  readonly host: string;
-  readonly port: number;
-  /** Time taken to start, in milliseconds. */
-  readonly startupMs: number;
-  /** Pushes a full-page reload to every connected browser. */
-  broadcastReload(): void;
-  /** Stops the HTTP and WebSocket servers. */
-  close(): Promise<void>;
-}
-
-const HTML_HEADERS = {
-  "content-type": "text/html; charset=utf-8",
-  "cache-control": "no-cache",
-} as const;
 
 /**
- * Starts the H3-based development server.
+ * Starts the Vantris development server.
  *
- * Responsibilities are split across the `server` module: this file owns the
- * HTTP routing (H3) and lifecycle, {@link createStaticLoader} owns file
- * resolution + transpilation, and {@link createReloadSocket} owns live reload.
- * The HTTP and WebSocket servers share a single port.
+ * This is the **single** public entry point: it builds a runtime-agnostic set
+ * of options (asset loader, base, HTTPS, CORS, proxy, SPA fallback) and
+ * dispatches to the native Node.js or Bun implementation via {@link getRuntime}.
+ * No other module imports the runtime servers directly, so the two behave
+ * identically from the caller's point of view.
  */
-export async function startDevServer(
+export async function createDevServer(
   options: DevServerOptions,
 ): Promise<DevServerHandle> {
   const { ctx, entry } = options;
-  const { paths, dev } = ctx.config;
-  const started = Date.now();
+  const { paths, dev, server } = ctx.config;
+  const base = server.base;
 
   const aliases: AliasUrl[] = ctx.resolver.aliases.map(({ find, replacement }) => ({
     find,
-    url: `/${relative(paths.root, replacement)}`,
+    url: `${base}${relative(paths.root, replacement)}`,
   }));
+
   const loadAsset = createStaticLoader({
     root: paths.root,
     rootDir: paths.rootDir,
     publicDir: paths.publicDir,
+    base,
     define: buildDefine(ctx.env, ctx.mode, ctx.config.base, ctx.config.define),
     aliases,
     cache: cacheForContext(ctx),
+    ...(options.prebundle
+      ? { depsDir: options.prebundle.dir, depsPrefix: options.prebundle.servePrefix, bareImports: options.prebundle.imports }
+      : {}),
   });
-  const entryFile = entry?.file ?? null;
 
-  const handler = async (event: H3Event) => {
-    const { pathname } = getRequestURL(event);
-
-    // 1. A real file on disk (transpiled if it's TypeScript/JSX).
-    const asset = await loadAsset(pathname);
-    if (asset) {
-      if (asset.isHtml) {
-        return new Response(injectDevClient(asset.body as string), {
-          headers: HTML_HEADERS,
-        });
-      }
-      return new Response(asset.body, {
-        headers: { "content-type": asset.contentType, "cache-control": "no-cache" },
-      });
-    }
-
-    // 2. Anything else falls back to the HTML entry. Root files
-    //    (package.json, configs, node_modules, …) are never read — they are
-    //    outside the served allowlist — so the client only ever gets index.html.
-    if (entryFile) {
-      const html = await readFile(entryFile, "utf8");
-      return new Response(injectDevClient(html), { headers: HTML_HEADERS });
-    }
-
-    // 3. No HTML entry exists yet.
-    return new Response(`404 Not Found: ${pathname}`, {
-      status: 404,
-      headers: { "content-type": "text/plain; charset=utf-8" },
-    });
+  const runtimeOptions: RuntimeServerOptions = {
+    host: options.host ?? dev.host,
+    port: options.port ?? dev.port,
+    base,
+    https: await resolveHttps(server.https, paths.root, ctx.logger),
+    cors: server.cors,
+    proxy: server.proxy,
+    spaFallback: server.spaFallback,
+    logger: ctx.logger,
+    loadAsset,
+    entryFile: entry?.file ?? null,
+    transformHtml: injectDevClient,
   };
 
-  const server = createNodeServer(handler);
-  const reload: ReloadSocket = createReloadSocket({ server, logger: ctx.logger });
-
-  // The actual bound port — important when `port` is 0 (OS-assigned).
-  const port = await listen(server, dev.port, dev.host);
-
-  return {
-    url: localUrl(dev.host, port),
-    host: dev.host,
-    port,
-    startupMs: Date.now() - started,
-    broadcastReload: () => reload.broadcastReload(),
-    async close() {
-      await reload.close();
-      await closeServer(server);
-    },
-  };
+  return getRuntime() === "bun"
+    ? createBunServer(runtimeOptions)
+    : createNodeServer(runtimeOptions);
 }
+
+/**
+ * @deprecated Use {@link createDevServer}. Kept as an alias so existing
+ * programmatic callers (v0.2.0+) keep working unchanged.
+ */
+export const startDevServer = createDevServer;

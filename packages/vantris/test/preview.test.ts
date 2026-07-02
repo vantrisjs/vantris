@@ -1,11 +1,12 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, it } from "node:test";
+import { expect, fn } from "./utils/expect.js";
 import type { PreviewConfig } from "../src/types/config.js";
 import {
   startPreviewServer,
   type PreviewServerHandle,
 } from "../src/preview/index.js";
 import { PreviewError, ServerError } from "../src/shared/errors.js";
-import { cleanupProjects, makeContext, makeProject } from "./helpers.js";
+import { cleanupProjects, makeContext, makeProject } from "./utils/helpers.js";
 
 const handles: PreviewServerHandle[] = [];
 
@@ -95,13 +96,13 @@ describe("preview server", () => {
 
   describe("auto-open", () => {
     it("opens the browser when preview.open is true", async () => {
-      const open = vi.fn();
+      const open = fn();
       const { handle } = await startPreview(DIST, { open: true }, open);
       expect(open).toHaveBeenCalledWith(handle.url);
     });
 
     it("does not open the browser when preview.open is false", async () => {
-      const open = vi.fn();
+      const open = fn();
       await startPreview(DIST, { open: false }, open);
       expect(open).not.toHaveBeenCalled();
     });
